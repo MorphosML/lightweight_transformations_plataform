@@ -1,0 +1,104 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: openflow
+      POSTGRES_PASSWORD: openflow_secure_password
+      POSTGRES_DB: openflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openflow -d openflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  spark-master:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8080:8080"   # Spark Web UI
+      - "7077:7077"   # Spark Master RPC
+      - "15002:15002" # Spark Connect gRPC
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+    depends_on:
+      - spark-master
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://openflow:openflow_secure_password@db:5432/openflow
+      - REDIS_URL=redis://redis:6379/0
+      - SPARK_CONNECT_URL=sc://spark-master:15002
+      - SPARK_MASTER=spark://spark-master:7077
+      - SECRET_KEY=jwt-secret-key-production-change-me-32-chars
+      - FERNET_KEY=V1dOUVd4TUdFMXR5UXZ6QjhYdEVxTGc9PQ==
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "celery", "-A", "openflow_api.worker", "worker", "--loglevel=info"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://openflow:openflow_secure_password@db:5432/openflow
+      - REDIS_URL=redis://redis:6379/0
+      - SPARK_CONNECT_URL=sc://spark-master:15002
+      - SPARK_MASTER=spark://spark-master:7077
+      - SECRET_KEY=jwt-secret-key-production-change-me-32-chars
+      - FERNET_KEY=V1dOUVd4TUdFMXR5UXZ6QjhYdEVxTGc9PQ==
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+
+volumes:
+  postgres_data:
+  redis_data:
