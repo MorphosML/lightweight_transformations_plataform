@@ -110,3 +110,4 @@ class PipelineService:
         runner = self.build_runner(graph_dict, tenant, engine=engine, connector=connector)
         preview_df = runner.preview(target_node_id, limit=limit)
         return preview_df.to_dict(orient="records")  # type: ignore
+

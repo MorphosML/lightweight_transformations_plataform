@@ -97,3 +97,4 @@ class PreviewRequest(BaseModel):
     node_id: str
     limit: int = 100
     engine: Literal["pandas", "spark"] = "pandas"
+

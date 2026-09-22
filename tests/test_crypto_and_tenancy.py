@@ -47,3 +47,4 @@ def test_pipeline_graph_validates_acyclic_on_schema() -> None:
 
     with pytest.raises(CycleError):
         cyclic_graph.validate_acyclic()
+

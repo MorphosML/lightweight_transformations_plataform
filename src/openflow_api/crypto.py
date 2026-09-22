@@ -48,3 +48,4 @@ class SecretsManager:
         if not cipher_text:
             return ""
         return self._fernet.decrypt(cipher_text.encode("utf-8")).decode("utf-8")
+

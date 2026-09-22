@@ -62,3 +62,4 @@ def test_preview_executes_only_upstream_dependencies_and_bounds_rows() -> None:
     # The output node was never run
     with pytest.raises(KeyError):
         connector.read("tenant-alpha", "out.csv")
+

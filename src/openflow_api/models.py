@@ -103,3 +103,4 @@ class Execution(Base):
     finished_at = Column(DateTime, nullable=True)
 
     pipeline = relationship("Pipeline", back_populates="executions")
+

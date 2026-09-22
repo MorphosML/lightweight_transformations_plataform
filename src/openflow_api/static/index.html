@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenFlow ELT — Ingestion & Transformation Studio</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Monaco Editor -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1e1e2e; }
+    ::-webkit-scrollbar-thumb { background: #3b3b4f; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4f4f6e; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
+        OF
+      </div>
+      <div>
+        <h1 class="text-base font-semibold text-white tracking-wide">OpenFlow ELT Platform</h1>
+        <p class="text-xs text-slate-400">Ingestion Studio & Interactive Transformation Playground</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700/60 text-xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-slate-300 font-mono" id="tenantBadge">Org: demo-tenant | Proj: elt-prod</span>
+      </div>
+      <a href="/docs" target="_blank" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+        API Docs &rarr;
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 grid grid-cols-12 gap-4 p-4 overflow-hidden">
+
+    <!-- Left Column: Ingestion Panel (4 cols) -->
+    <section class="col-span-12 lg:col-span-4 flex flex-col gap-4">
+      
+      <!-- Ingestion Source Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 shadow-md">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <span>📥</span> Data Ingestion
+          </h2>
+          <span class="text-xs px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">Source</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Preset Sample Datasets</label>
+          <div class="grid grid-cols-1 gap-1.5" id="presetsContainer">
+            <button onclick="loadPreset('ecommerce')" class="preset-btn text-left px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 transition-all flex justify-between items-center">
+              <span>🛒 E-Commerce Transactions</span>
+              <span class="text-[10px] text-slate-400 font-mono">100 rows</span>
+            </button>
+            <button onclick="loadPreset('iot_sensors')" class="preset-btn text-left px-3 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-700 border border-slate-700/60 text-xs font-medium text-slate-300 transition-all flex justify-between items-center">
+              <span>📡 IoT Sensor Telemetry</span>
+              <span class="text-[10px] text-slate-400 font-mono">100 rows</span>
+            </button>
+            <button onclick="loadPreset('customers')" class="preset-btn text-left px-3 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-700 border border-slate-700/60 text-xs font-medium text-slate-300 transition-all flex justify-between items-center">
+              <span>👥 Customer Demographics</span>
+              <span class="text-[10px] text-slate-400 font-mono">100 rows</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom Upload / Key -->
+        <div class="pt-2 border-t border-slate-800/80">
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-medium text-slate-400">Custom CSV Upload</label>
+            <label for="csvFileInput" class="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer font-medium">Browse File...</label>
+            <input type="file" id="csvFileInput" accept=".csv,.json" class="hidden" onchange="handleFileUpload(event)">
+          </div>
+          <div class="flex gap-2">
+            <input type="text" id="datasetKeyInput" value="ecommerce_sales.csv" placeholder="Dataset key (e.g. data.csv)" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500">
+            <button onclick="reloadIngestedDataset()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors">
+              Load
+            </button>
+          </div>
+        </div>
+
+        <!-- Ingested Schema Summary -->
+        <div class="mt-2 bg-slate-950 rounded-lg p-3 border border-slate-800 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-slate-300">Ingested Schema</span>
+            <span class="text-[11px] text-slate-500 font-mono" id="ingestStats">6 cols &bull; 100 rows</span>
+          </div>
+          <div class="flex flex-wrap gap-1 max-h-32 overflow-y-auto" id="schemaTags">
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">order_id: int</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">amount: float</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">category: str</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">status: str</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Pipeline Integration Note -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 text-xs text-slate-400 flex flex-col gap-2">
+        <div class="font-semibold text-slate-300 flex items-center gap-1.5">
+          <span>⚡</span> Distributed Pipeline Ready
+        </div>
+        <p>This interactive studio compiles your code directly into OpenFlow DAG transformations. When submitted to Celery or Spark, transformations execute across your PySpark cluster with zero memory leaks.</p>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Code Editor & Live Preview (8 cols) -->
+    <section class="col-span-12 lg:col-span-8 flex flex-col gap-4">
+
+      <!-- Code Editor Panel -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden shadow-lg">
+        
+        <!-- Editor Header Bar -->
+        <div class="bg-slate-800/60 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-white flex items-center gap-1.5">
+              <span>💻</span> Transformation Logic
+            </span>
+            <!-- Engine Selector Tabs -->
+            <div class="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-700/80 ml-2">
+              <button onclick="setEngine('pyspark')" id="tab-pyspark" class="engine-tab px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-medium transition-all">PySpark</button>
+              <button onclick="setEngine('ast_filter')" id="tab-ast_filter" class="engine-tab px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-slate-200 transition-all">Safe AST</button>
+              <button onclick="setEngine('sql')" id="tab-sql" class="engine-tab px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-slate-200 transition-all">SQL</button>
+              <button onclick="setEngine('pandas')" id="tab-pandas" class="engine-tab px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-slate-200 transition-all">Pandas</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <!-- Templates dropdown -->
+            <select id="templateSelect" onchange="applyTemplate()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-300 focus:outline-none focus:border-indigo-500">
+              <option value="">Choose Code Template...</option>
+              <option value="pyspark_filter_group">PySpark: Filter & Group By</option>
+              <option value="pyspark_calc">PySpark: Calculated Column</option>
+              <option value="ast_filter">Safe AST: Multi-condition Filter</option>
+              <option value="sql_agg">SQL: Aggregation & Order</option>
+              <option value="pandas_transform">Pandas: Feature Engineering</option>
+            </select>
+
+            <!-- Execute Button -->
+            <button onclick="runTransformation()" id="runBtn" class="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-medium px-4 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-indigo-500/20 transition-all active:scale-95">
+              <span>▶</span> Run (Ctrl+Enter)
+            </button>
+          </div>
+        </div>
+
+        <!-- Monaco Editor Container -->
+        <div id="editorContainer" class="h-64 w-full bg-[#1e1e1e]"></div>
+
+      </div>
+
+      <!-- Execution Results & Output Table -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl flex-1 flex flex-col overflow-hidden shadow-lg min-h-[300px]">
+        
+        <!-- Results Bar -->
+        <div class="bg-slate-800/40 px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-3">
+            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+              <span>📊</span> Output Preview
+            </span>
+            <span id="statusBadge" class="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono text-[11px]">Ready</span>
+            <span id="metricRows" class="text-slate-400 font-mono">0 rows</span>
+            <span id="metricDuration" class="text-slate-400 font-mono">0.0 ms</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input type="text" id="tableFilter" oninput="filterTable()" placeholder="Search preview..." class="bg-slate-950 border border-slate-700/80 rounded px-2 py-0.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 font-mono">
+            <span id="engineBadge" class="text-slate-400 font-mono text-[11px]">PySpark Engine</span>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="flex-1 overflow-auto bg-slate-950/60 p-2" id="tableWrapper">
+          <table class="w-full text-left text-xs border-collapse font-mono" id="resultsTable">
+            <thead class="bg-slate-800/90 text-slate-300 sticky top-0" id="tableHead">
+              <!-- Dynamically populated -->
+            </thead>
+            <tbody class="divide-y divide-slate-800 text-slate-300" id="tableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+          <div id="emptyState" class="p-8 text-center text-slate-500 text-xs">
+            No transformations executed yet. Click "Run (Ctrl+Enter)" to execute your transformation.
+          </div>
+        </div>
+
+        <!-- Error / Console Box (hidden by default) -->
+        <div id="errorBox" class="hidden bg-rose-950/40 border-t border-rose-900 p-3 text-rose-300 font-mono text-xs overflow-x-auto"></div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // App State
+    let currentEngine = 'pyspark';
+    let currentDatasetKey = 'ecommerce_sales.csv';
+    let editor = null;
+    let fullRecords = [];
+
+    // Starter code snippets
+    const CODE_SNIPPETS = {
+      pyspark: `# PySpark Transformation Logic
+# 'df' is your PySpark DataFrame, 'F' is pyspark.sql.functions, 'spark' is SparkSession
+
+# Filter high-value orders and calculate customer total sales
+df_out = (
+    df.filter(F.col("amount") > 50.0)
+      .groupBy("country", "category")
+      .agg(
+          F.count("order_id").alias("total_orders"),
+          F.round(F.sum("amount"), 2).alias("total_revenue"),
+          F.round(F.avg("amount"), 2).alias("avg_order_value")
+      )
+      .orderBy(F.col("total_revenue").desc())
+)
+`,
+      ast_filter: `# Safe AST Expression (Zero RCE Risk)
+# Whitelisted boolean expression evaluated on columns
+amount >= 100.0 and category in ['Electronics', 'Home'] and status == 'Completed'
+`,
+      sql: `-- SQL Query against the ingested dataset (table name: 'data')
+SELECT 
+    country,
+    category,
+    COUNT(order_id) AS order_count,
+    ROUND(SUM(amount), 2) AS total_amount
+FROM data
+WHERE amount > 50.0
+GROUP BY country, category
+ORDER BY total_amount DESC;
+`,
+      pandas: `# Pandas In-Memory Transformation
+# 'df' is your pandas DataFrame
+
+df_out = df[df["amount"] > 50.0].copy()
+df_out["tax"] = df_out["amount"] * 0.15
+df_out["total_with_tax"] = df_out["amount"] + df_out["tax"]
+`
+    };
+
+    const TEMPLATES = {
+      pyspark_filter_group: CODE_SNIPPETS.pyspark,
+      pyspark_calc: `# PySpark Calculated Column & Window
+df_out = df.withColumn("amount_with_vat", F.round(F.col("amount") * 1.20, 2))
+`,
+      ast_filter: CODE_SNIPPETS.ast_filter,
+      sql_agg: CODE_SNIPPETS.sql,
+      pandas_transform: CODE_SNIPPETS.pandas
+    };
+
+    // Initialize Monaco Editor
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+      editor = monaco.editor.create(document.getElementById('editorContainer'), {
+        value: CODE_SNIPPETS[currentEngine],
+        language: 'python',
+        theme: 'vs-dark',
+        automaticLayout: true,
+        fontSize: 12,
+        minimap: { enabled: false },
+        lineNumbers: 'on',
+        scrollBeyondLastLine: false,
+        renderLineHighlight: 'all',
+      });
+
+      // Keyboard shortcut Ctrl+Enter or Cmd+Enter to execute
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
+        runTransformation();
+      });
+
+      // Load initial preset
+      loadPreset('ecommerce');
+    });
+
+    function setEngine(engine) {
+      currentEngine = engine;
+      document.querySelectorAll('.engine-tab').forEach(tab => {
+        tab.className = 'engine-tab px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-slate-200 transition-all';
+      });
+      document.getElementById('tab-' + engine).className = 'engine-tab px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-medium transition-all';
+
+      // Set editor language
+      if (editor) {
+        const lang = engine === 'sql' ? 'sql' : 'python';
+        monaco.editor.setModelLanguage(editor.getModel(), lang);
+        editor.setValue(CODE_SNIPPETS[engine]);
+      }
+      document.getElementById('engineBadge').innerText = engine.toUpperCase() + ' Engine';
+    }
+
+    function applyTemplate() {
+      const select = document.getElementById('templateSelect');
+      const val = select.value;
+      if (val && TEMPLATES[val]) {
+        if (val.startsWith('pyspark')) setEngine('pyspark');
+        else if (val.startsWith('ast')) setEngine('ast_filter');
+        else if (val.startsWith('sql')) setEngine('sql');
+        else if (val.startsWith('pandas')) setEngine('pandas');
+        editor.setValue(TEMPLATES[val]);
+      }
+    }
+
+    async function loadPreset(presetName) {
+      try {
+        const res = await fetch('/api/v1/ingest/load-preset', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Org-Id': 'demo-tenant',
+            'X-Project-Id': 'elt-prod'
+          },
+          body: JSON.stringify({ preset: presetName })
+        });
+        const data = await res.json();
+        currentDatasetKey = data.key;
+        document.getElementById('datasetKeyInput').value = data.key;
+        document.getElementById('ingestStats').innerText = `${data.columns.length} cols • ${data.row_count} rows`;
+        
+        // Render schema tags
+        const tagsContainer = document.getElementById('schemaTags');
+        tagsContainer.innerHTML = '';
+        data.columns.forEach(col => {
+          const span = document.createElement('span');
+          span.className = 'px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700';
+          span.innerText = col;
+          tagsContainer.appendChild(span);
+        });
+
+        // Run default transform on load
+        runTransformation();
+      } catch (err) {
+        console.error("Error loading preset:", err);
+      }
+    }
+
+    async function runTransformation() {
+      if (!editor) return;
+      const code = editor.getValue();
+      const runBtn = document.getElementById('runBtn');
+      const statusBadge = document.getElementById('statusBadge');
+      const errorBox = document.getElementById('errorBox');
+      
+      runBtn.disabled = true;
+      runBtn.innerHTML = '<span>⏳</span> Running...';
+      statusBadge.className = 'px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800 font-mono text-[11px]';
+      statusBadge.innerText = 'Executing...';
+      errorBox.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/v1/transform/execute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Org-Id': 'demo-tenant',
+            'X-Project-Id': 'elt-prod'
+          },
+          body: JSON.stringify({
+            dataset_key: currentDatasetKey,
+            engine: currentEngine,
+            code: code,
+            limit: 100
+          })
+        });
+
+        const result = await res.json();
+        runBtn.disabled = false;
+        runBtn.innerHTML = '<span>▶</span> Run (Ctrl+Enter)';
+
+        if (result.status === 'succeeded') {
+          statusBadge.className = 'px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono text-[11px]';
+          statusBadge.innerText = 'Succeeded';
+          document.getElementById('metricRows').innerText = `${result.row_count} rows`;
+          document.getElementById('metricDuration').innerText = `${result.duration_ms} ms`;
+          document.getElementById('engineBadge').innerText = result.engine_details || currentEngine.toUpperCase();
+          fullRecords = result.records;
+          renderTable(result.columns, result.records);
+        } else {
+          statusBadge.className = 'px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 font-mono text-[11px]';
+          statusBadge.innerText = 'Failed';
+          document.getElementById('metricRows').innerText = '0 rows';
+          document.getElementById('metricDuration').innerText = `${result.duration_ms} ms`;
+          errorBox.innerText = `Error: ${result.error}`;
+          errorBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        runBtn.disabled = false;
+        runBtn.innerHTML = '<span>▶</span> Run (Ctrl+Enter)';
+        statusBadge.className = 'px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 font-mono text-[11px]';
+        statusBadge.innerText = 'Network Error';
+        errorBox.innerText = `Network or request error: ${err.message}`;
+        errorBox.classList.remove('hidden');
+      }
+    }
+
+    function renderTable(columns, records) {
+      const tableHead = document.getElementById('tableHead');
+      const tableBody = document.getElementById('tableBody');
+      const emptyState = document.getElementById('emptyState');
+
+      if (!records || records.length === 0) {
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        emptyState.innerText = 'Transformation executed successfully, but returned 0 rows.';
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      // Build Headers
+      let headHtml = '<tr>';
+      columns.forEach(col => {
+        headHtml += `<th class="px-3 py-2 border-b border-slate-700 font-medium text-slate-300">${col}</th>`;
+      });
+      headHtml += '</tr>';
+      tableHead.innerHTML = headHtml;
+
+      // Build Rows
+      let bodyHtml = '';
+      records.forEach(row => {
+        bodyHtml += '<tr class="hover:bg-slate-800/40 transition-colors">';
+        columns.forEach(col => {
+          const val = row[col];
+          const displayVal = val !== null && val !== undefined ? val : '<span class="text-slate-600">null</span>';
+          bodyHtml += `<td class="px-3 py-1.5 border-b border-slate-800/60">${displayVal}</td>`;
+        });
+        bodyHtml += '</tr>';
+      });
+      tableBody.innerHTML = bodyHtml;
+    }
+
+    function filterTable() {
+      const term = document.getElementById('tableFilter').value.toLowerCase();
+      if (!term) {
+        renderTable(Object.keys(fullRecords[0] || {}), fullRecords);
+        return;
+      }
+      const filtered = fullRecords.filter(r => 
+        Object.values(r).some(v => String(v).toLowerCase().includes(term))
+      );
+      renderTable(Object.keys(fullRecords[0] || {}), filtered);
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const text = e.target.result;
+        try {
+          const res = await fetch('/api/v1/ingest/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Org-Id': 'demo-tenant',
+              'X-Project-Id': 'elt-prod'
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              content: text
+            })
+          });
+          const data = await res.json();
+          currentDatasetKey = data.key;
+          document.getElementById('datasetKeyInput').value = data.key;
+          document.getElementById('ingestStats').innerText = `${data.columns.length} cols • ${data.row_count} rows`;
+          
+          const tagsContainer = document.getElementById('schemaTags');
+          tagsContainer.innerHTML = '';
+          data.columns.forEach(col => {
+            const span = document.createElement('span');
+            span.className = 'px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700';
+            span.innerText = col;
+            tagsContainer.appendChild(span);
+          });
+          runTransformation();
+        } catch (err) {
+          alert('Upload failed: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>

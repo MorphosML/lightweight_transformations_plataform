@@ -70,3 +70,4 @@ def test_pyspark_runner_translates_and_executes_with_spark_mock() -> None:
     assert mock_connector.read_spark.call_count == 2
     mock_df_in1.join.assert_called_once_with(mock_df_in2, on=["user_id"], how="inner")
     mock_connector.write_spark.assert_called_once_with("tenant-1", "out.parquet", mock_df_joined, None)
+
