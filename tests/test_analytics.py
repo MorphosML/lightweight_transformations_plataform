@@ -124,3 +124,4 @@ def test_studio_bottom_panel_analytics_toggle(tk_app: OpenFlowLocalApp) -> None:
     # Switch back to preview
     tk_app.switch_bottom_panel("preview")
     assert tk_app.table_container.winfo_manager() == "pack"
+

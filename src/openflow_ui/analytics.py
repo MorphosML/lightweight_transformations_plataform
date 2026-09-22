@@ -252,3 +252,4 @@ class InteractiveChartCanvas:
             self.plot_bar(self._last_plot_args["labels"], self._last_plot_args["values"], self._last_plot_args["title"])
         elif ptype == "line":
             self.plot_line(self._last_plot_args["labels"], self._last_plot_args["values"], self._last_plot_args["title"])
+
