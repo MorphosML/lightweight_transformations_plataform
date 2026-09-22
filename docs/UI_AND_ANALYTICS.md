@@ -94,9 +94,31 @@ python run_ui.py
 python -m openflow_ui
 ```
 
+### Launching in Dedicated Browser App Mode:
+If WebKit2 encounters sandbox/driver errors on your Linux setup (such as bubblewrap or GPU compositing restrictions), or if you prefer running in Chrome/Chromium/Firefox dedicated app window:
+```bash
+# Force dedicated browser app mode
+python run_ui.py --browser
+# or
+OPENFLOW_UI_MODE=browser python run_ui.py
+```
+
 ### Launching in Headless Server Mode (Browser Access):
 ```bash
 # Start background server on port 8765
 python run_ui.py --headless --port 8765
 ```
 Then navigate to: `http://localhost:8765`
+
+---
+
+## 5. WebKit2GTK Hardening & Resilient Fallback
+
+Linux environments often impose strict bubblewrap sandbox policies (e.g. Ubuntu AppArmor restrictions) or fail on DMABuf GPU hardware compositing, resulting in the generic `"WebKit encountered an internal error"` dialog.
+
+OpenFlow automatically applies the following hardening mitigations at runtime:
+1. **Sandbox Exemption**: Sets `WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1` and `ctx.set_sandbox_enabled(False)` to avoid bubblewrap unprivileged user namespace failures.
+2. **Software Compositing**: Sets `WEBKIT_DISABLE_DMABUF_RENDERER=1`, `WEBKIT_DISABLE_COMPOSITING_MODE=1`, and `LIBGL_ALWAYS_SOFTWARE=1` with `HardwareAccelerationPolicy.NEVER` to prevent GPU process crashes.
+3. **Localhost Proxy Bypass**: Bypasses proxy traps by setting `no_proxy=localhost,127.0.0.1`.
+4. **Crash Detection & Automatic Fallback**: Listens to `web-process-terminated` and `load-failed` GTK signals; if WebKit crashes internally, it automatically launches a borderless standalone app window via Chrome/Chromium/Firefox without terminating the session.
+

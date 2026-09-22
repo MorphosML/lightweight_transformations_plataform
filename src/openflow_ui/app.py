@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -11,6 +13,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import parse_qs, urlparse
+
+# Configure WebKit2GTK environment variables early to prevent sandbox & driver crashes
+os.environ.setdefault("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1")
+os.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+os.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
+os.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")
+if "no_proxy" not in os.environ:
+    os.environ["no_proxy"] = "localhost,127.0.0.1"
+elif "127.0.0.1" not in os.environ["no_proxy"]:
+    os.environ["no_proxy"] = f"localhost,127.0.0.1,{os.environ['no_proxy']}"
 
 import pandas as pd
 
@@ -527,26 +539,93 @@ df_out = df[df['amount'] > 50.0].groupby(['country', 'category']).agg(
 
 
 class OpenFlowNativeWindow:
-    """Authentic Linux desktop application window running GTK3 and WebKit2GTK."""
+    """Authentic Linux desktop application window running GTK3 and WebKit2GTK, with resilient browser app fallback."""
 
     def __init__(self, url: str) -> None:
         self.url = url
         self.window: Any = None
         self.webview: Any = None
 
+    @staticmethod
+    def launch_browser_app(url: str) -> bool:
+        """Launches the user's browser in dedicated standalone app window mode or new window."""
+        candidates = [
+            ["google-chrome", f"--app={url}", "--window-size=1280,820"],
+            ["chromium-browser", f"--app={url}", "--window-size=1280,820"],
+            ["chromium", f"--app={url}", "--window-size=1280,820"],
+            ["microsoft-edge", f"--app={url}", "--window-size=1280,820"],
+            ["brave-browser", f"--app={url}", "--window-size=1280,820"],
+            ["firefox", "--new-window", url],
+        ]
+        for cmd in candidates:
+            binary = shutil.which(cmd[0])
+            if binary:
+                try:
+                    subprocess.Popen([binary] + cmd[1:], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    print(f"[OpenFlow] Launched dedicated app window via {binary}")
+                    return True
+                except Exception:
+                    continue
+
+        webbrowser.open(url)
+        return True
+
     def launch(self) -> None:
-        """Launches the native GTK3 + WebKit2 window."""
+        """Launches the native GTK3 + WebKit2 window with sandbox & hardware acceleration hardening."""
         try:
+            # Force WebKit sandbox and driver safety flags
+            os.environ["WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS"] = "1"
+            os.environ["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
+            os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
+            os.environ["LIBGL_ALWAYS_SOFTWARE"] = "1"
+
             import gi
             gi.require_version("Gtk", "3.0")
             gi.require_version("WebKit2", "4.1")
             from gi.repository import Gtk, WebKit2
+
+            # Disable sandbox on WebContext to prevent bubblewrap crash
+            ctx = WebKit2.WebContext.get_default()
+            if hasattr(ctx, "set_sandbox_enabled"):
+                ctx.set_sandbox_enabled(False)
+            if hasattr(ctx, "set_network_proxy_settings"):
+                try:
+                    ctx.set_network_proxy_settings(WebKit2.NetworkProxyMode.NO_PROXY, None)
+                except Exception:
+                    pass
 
             self.window = Gtk.Window(title="OpenFlow Fabric Studio — Desktop Edition")
             self.window.set_default_size(1280, 820)
             self.window.set_position(Gtk.WindowPosition.CENTER)
 
             self.webview = WebKit2.WebView()
+            settings = self.webview.get_settings()
+            if hasattr(settings, "set_hardware_acceleration_policy"):
+                settings.set_hardware_acceleration_policy(WebKit2.HardwareAccelerationPolicy.NEVER)
+            if hasattr(settings, "set_enable_webgl"):
+                settings.set_enable_webgl(False)
+            if hasattr(settings, "set_enable_accelerated_2d_canvas"):
+                settings.set_enable_accelerated_2d_canvas(False)
+
+            # Signal handlers for WebKit internal crashes
+            def _on_web_process_terminated(webview: Any, reason: Any) -> None:
+                print(f"[OpenFlow] WebKit process terminated ({reason}). Falling back to browser app...")
+                if self.window:
+                    self.window.destroy()
+                Gtk.main_quit()
+                self.launch_browser_app(self.url)
+
+            def _on_load_failed(webview: Any, load_event: Any, failing_uri: str, error: Any) -> bool:
+                print(f"[OpenFlow] WebKit load failed ({error.message}). Falling back to browser app...")
+                if self.window:
+                    self.window.destroy()
+                Gtk.main_quit()
+                self.launch_browser_app(self.url)
+                return True
+
+            self.webview.connect("web-process-terminated", _on_web_process_terminated)
+            self.webview.connect("load-failed", _on_load_failed)
+
             self.webview.load_uri(self.url)
             self.window.add(self.webview)
 
@@ -554,8 +633,8 @@ class OpenFlowNativeWindow:
             self.window.show_all()
             Gtk.main()
         except Exception as exc:
-            print(f"[OpenFlow] Native window fallback to browser: {exc}")
-            webbrowser.open(self.url)
+            print(f"[OpenFlow] Native WebKit error ({exc}), launching browser app mode...")
+            self.launch_browser_app(self.url)
 
 
 def main() -> None:
@@ -565,26 +644,34 @@ def main() -> None:
 
     print("=" * 64)
     print(" OPENFLOW FABRIC STUDIO — LOCAL DESKTOP EDITION")
-    print(" 100% Offline | Native GTK3 WebKit2 Window | Plotly & Seaborn")
+    print(" 100% Offline | Native Desktop Studio | Plotly & Seaborn")
     print(f" Local URL: {url}")
     print("=" * 64)
 
+    mode = os.environ.get("OPENFLOW_UI_MODE", "").lower()
+    force_browser = any(arg in sys.argv for arg in ("--browser", "--app", "-b")) or mode == "browser"
+    headless = any(arg in sys.argv for arg in ("--headless", "--no-window", "-h")) or mode == "headless"
     has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
-    if has_display and "--no-window" not in sys.argv:
+
+    if force_browser:
+        print("[OpenFlow] Launching in dedicated browser app mode...")
+        OpenFlowNativeWindow.launch_browser_app(url)
+    elif has_display and not headless:
         try:
             native_win = OpenFlowNativeWindow(url)
             native_win.launch()
             server.stop()
             return
         except Exception as e:
-            print(f"[OpenFlow] Desktop window error: {e}")
+            print(f"[OpenFlow] Desktop window error: {e}, falling back to browser app...")
+            OpenFlowNativeWindow.launch_browser_app(url)
+    elif not headless:
+        # Fallback for background / browser mode
+        def _open() -> None:
+            time.sleep(0.8)
+            OpenFlowNativeWindow.launch_browser_app(url)
 
-    # Fallback for headless / browser mode
-    def _open() -> None:
-        time.sleep(0.8)
-        webbrowser.open(url)
-
-    threading.Thread(target=_open, daemon=True).start()
+        threading.Thread(target=_open, daemon=True).start()
 
     try:
         while True:

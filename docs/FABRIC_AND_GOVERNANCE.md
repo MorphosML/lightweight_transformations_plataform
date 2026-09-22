@@ -89,3 +89,4 @@ Every transformation produces a tamper-verifiable `AuditRecord` (`openflow_engin
 
 ### C. Zero-Leak Secret Masking
 The `SecretMasker` intercepts execution logs, error traces, and SQL queries to sanitize passwords, cloud tokens (`AWS_SECRET_ACCESS_KEY`, `AZURE_STORAGE_KEY`), bearer tokens, and connection URIs before persisting to audit tables.
+

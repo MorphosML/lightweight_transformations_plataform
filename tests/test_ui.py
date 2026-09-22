@@ -253,3 +253,14 @@ def test_openflow_native_window_class() -> None:
     win = OpenFlowNativeWindow("http://127.0.0.1:8000")
     assert win.url == "http://127.0.0.1:8000"
 
+
+def test_openflow_native_window_launch_browser_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    from openflow_ui.app import OpenFlowNativeWindow
+    opened_urls: list[str] = []
+    monkeypatch.setattr("webbrowser.open", lambda url: opened_urls.append(url))
+    monkeypatch.setattr("shutil.which", lambda cmd: None)
+
+    success = OpenFlowNativeWindow.launch_browser_app("http://127.0.0.1:8765")
+    assert success is True
+    assert "http://127.0.0.1:8765" in opened_urls
+

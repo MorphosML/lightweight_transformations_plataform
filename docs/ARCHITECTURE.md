@@ -118,3 +118,4 @@ The connector security module (`openflow_engine.security`) enforces strict perim
 - **Blocked Network Targets**: Prohibits loopback interfaces, private subnets (RFC 1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local IPs (`169.254.0.0/16`), and AWS/GCP/Azure cloud metadata endpoints (`http://169.254.169.254/`).
 - **SQL Sanitizer**: Parses incoming SQL commands to ensure only read-only queries (`SELECT`, `WITH`) are executed, systematically blocking destructive operations (`DROP`, `DELETE`, `TRUNCATE`, `ALTER`, `GRANT`, `INSERT`).
 - **Path Traversal Protection**: Rejects file paths containing `../` or absolute path escaping, confining all local lakehouse operations to tenant-isolated roots.
+

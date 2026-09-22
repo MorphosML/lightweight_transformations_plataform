@@ -1,7 +1,7 @@
 # OpenFlow — Modern Fabric ELT Platform & Lakehouse Studio
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-64%20passed%20(100%25)-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-65%20passed%20(100%25)-brightgreen.svg)](tests/)
 [![FinOps](https://img.shields.io/badge/finops-0.00%20CU%20Tier%200-success.svg)](docs/FABRIC_AND_GOVERNANCE.md)
 [![UI](https://img.shields.io/badge/studio-GTK3%20%2F%20WebKit2%20All--Local-blueviolet.svg)](docs/UI_AND_ANALYTICS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -139,13 +139,19 @@ python run_ui.py
 python -m openflow_ui
 ```
 
-#### B. Launch in Headless Server Mode (Browser Access)
+#### B. Launch in Standalone Browser App Mode
+If your Linux environment restricts WebKit2GTK bubblewrap sandboxing or GPU compositing:
+```bash
+python run_ui.py --browser
+```
+
+#### C. Launch in Headless Server Mode (Browser Access)
 ```bash
 python run_ui.py --headless --port 8765
 ```
 Open your browser to `http://localhost:8765`.
 
-#### C. Running with Docker Compose
+#### D. Running with Docker Compose
 Run the distributed stack including Spark Master, Spark Worker, PostgreSQL, Redis, FastAPI, and Celery:
 ```bash
 docker compose up --build
@@ -165,7 +171,7 @@ OpenFlow is strictly validated with automated test suites:
 .venv/bin/pytest tests/ -v
 ```
 
-**Results**: 64 passing tests across all components:
+**Results**: 65 passing tests across all components:
 - `test_analytics.py`: Plotly, Seaborn, Matplotlib, and statistical summaries.
 - `test_ui.py`: Local desktop studio, headless fallback, and REST handlers.
 - `test_fabric_and_governance.py`: Capacity router, FinOps metering, PII masking, audit lineage.
