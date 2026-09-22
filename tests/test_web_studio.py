@@ -79,3 +79,4 @@ def test_api_medallion_lifecycle_endpoints() -> None:
     assert len(tables["bronze"]) > 0
     assert len(tables["silver"]) > 0
     assert len(tables["gold"]) > 0
+
