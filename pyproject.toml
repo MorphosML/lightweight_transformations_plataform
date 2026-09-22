@@ -22,8 +22,13 @@ test = [
     "pytest>=8.0",
     "httpx>=0.27.0",
 ]
+ui = [
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+    "plotly>=5.18.0",
+]
 all = [
-    "openflow-engine[api,spark,test]",
+    "openflow-engine[api,spark,test,ui]",
 ]
 
 [project.scripts]
