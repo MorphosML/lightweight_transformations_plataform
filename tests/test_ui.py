@@ -1,111 +1,193 @@
-import tkinter as tk
-import pandas as pd
+import json
+import urllib.request
 import pytest
 
-from openflow_ui.app import OpenFlowLocalApp
+from openflow_ui.app import (
+    OpenFlowLocalApp,
+    OpenFlowUIServer,
+    generate_dataset,
+)
 
 
-@pytest.fixture
-def tk_app():
-    """Provides a headless/hidden Tkinter root and OpenFlowLocalApp instance."""
-    root = tk.Tk()
-    root.withdraw()  # Hide window during test session
-    app = OpenFlowLocalApp(root)
-    yield app
-    root.destroy()
+@pytest.fixture(scope="module")
+def ui_server():
+    """Spins up a lightweight threaded OpenFlowUIServer for testing."""
+    server = OpenFlowUIServer(host="127.0.0.1", port=8100)
+    bound_port = server.start(daemon=True)
+    base_url = f"http://127.0.0.1:{bound_port}"
+    yield base_url
+    server.stop()
 
 
-def test_ui_initialization(tk_app: OpenFlowLocalApp) -> None:
-    # Verify initial dataset and state
-    assert tk_app.current_engine == "pyspark"
-    assert len(tk_app.current_df) == 100
-    assert "order_id" in tk_app.current_df.columns
-    assert tk_app.schema_listbox.size() > 0
-    assert "[STATUS: READY]" in tk_app.telemetry_lbl.cget("text")
+_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def test_ui_preset_switching(tk_app: OpenFlowLocalApp) -> None:
-    # Switch to IOT Telemetry
-    tk_app.preset_var.set("IOT_TELEMETRY")
-    tk_app._on_preset_selected()
-
-    assert "device_id" in tk_app.current_df.columns
-    assert "temperature" in tk_app.current_df.columns
-    assert len(tk_app.current_df) == 100
-    assert "iot_telemetry.csv" in tk_app.dataset_info_lbl.cget("text")
-
-
-def test_ui_engine_switching(tk_app: OpenFlowLocalApp) -> None:
-    # Switch to SQL engine
-    tk_app.set_engine("sql")
-    assert tk_app.current_engine == "sql"
-    assert "SELECT" in tk_app.code_text.get("1.0", "end")
-
-    # Switch to Safe AST engine
-    tk_app.set_engine("ast_filter")
-    assert tk_app.current_engine == "ast_filter"
-    assert "amount" in tk_app.code_text.get("1.0", "end")
+def _request_json(url: str, method: str = "GET", data: dict | None = None) -> tuple[int, dict]:
+    req = urllib.request.Request(url, method=method)
+    req.add_header("Content-Type", "application/json")
+    body = json.dumps(data).encode("utf-8") if data is not None else None
+    with _opener.open(req, data=body) as response:
+        status = response.status
+        content = json.loads(response.read().decode("utf-8"))
+        return status, content
 
 
-def test_ui_execution_sql_query(tk_app: OpenFlowLocalApp) -> None:
-    tk_app.preset_var.set("ECOMMERCE_SALES")
-    tk_app._on_preset_selected()
-
-    tk_app.set_engine("sql")
-    query = "SELECT country, COUNT(order_id) AS cnt FROM data GROUP BY country"
-    tk_app.code_text.delete("1.0", "end")
-    tk_app.code_text.insert("1.0", query)
-
-    tk_app.run_transformation()
-
-    # Check telemetry label and treeview rows
-    telemetry = tk_app.telemetry_lbl.cget("text")
-    assert "SUCCEEDED" in telemetry
-    children = tk_app.tree.get_children()
-    assert len(children) > 0
-    assert "country" in tk_app.tree["columns"]
-    assert "cnt" in tk_app.tree["columns"]
+def test_ui_server_serves_react_studio_html(ui_server: str) -> None:
+    req = urllib.request.Request(f"{ui_server}/")
+    with _opener.open(req) as response:
+        assert response.status == 200
+        html = response.read().decode("utf-8")
+        assert "OpenFlow" in html
+        assert "Modern Web Desktop" in html
+        assert "react" in html.lower()
+        assert "monaco" in html.lower()
+        assert "chart.js" in html.lower()
 
 
-def test_ui_execution_ast_filter(tk_app: OpenFlowLocalApp) -> None:
-    tk_app.preset_var.set("ECOMMERCE_SALES")
-    tk_app._on_preset_selected()
+def test_ui_server_presets_list_and_load(ui_server: str) -> None:
+    # 1. List presets
+    status, data = _request_json(f"{ui_server}/api/v1/presets")
+    assert status == 200
+    assert "ECOMMERCE_SALES" in data["presets"]
+    assert "IOT_TELEMETRY" in data["presets"]
 
-    tk_app.set_engine("ast_filter")
-    tk_app.code_text.delete("1.0", "end")
-    tk_app.code_text.insert("1.0", "amount > 200.0 and status == 'Completed'")
+    # 2. Load Ecommerce Preset
+    status, ecom_data = _request_json(
+        f"{ui_server}/api/v1/presets/load",
+        method="POST",
+        data={"preset": "ECOMMERCE_SALES"}
+    )
+    assert status == 200
+    assert ecom_data["preset"] == "ECOMMERCE_SALES"
+    assert "order_id" in ecom_data["columns"]
+    assert len(ecom_data["rows"]) > 0
 
-    tk_app.run_transformation()
-
-    telemetry = tk_app.telemetry_lbl.cget("text")
-    assert "SUCCEEDED" in telemetry
-    children = tk_app.tree.get_children()
-    assert len(children) > 0
-
-
-def test_ui_execution_error_reporting(tk_app: OpenFlowLocalApp) -> None:
-    tk_app.set_engine("pandas")
-    tk_app.code_text.delete("1.0", "end")
-    tk_app.code_text.insert("1.0", "df_out = 1 / 0")
-
-    tk_app.run_transformation()
-
-    telemetry = tk_app.telemetry_lbl.cget("text")
-    assert "FAILED" in telemetry
-    assert "division by zero" in telemetry
-
-
-def test_ui_syntax_highlighting(tk_app: OpenFlowLocalApp) -> None:
-    tk_app.set_engine("sql")
-    # Verify SQL query has keywords highlighted
-    ranges_kw = tk_app.code_text.tag_ranges("kw_sql")
-    assert len(ranges_kw) > 0
-
-    # Switch to PySpark and verify Python keywords & comment tags
-    tk_app.set_engine("pyspark")
-    ranges_comment = tk_app.code_text.tag_ranges("comment")
-    ranges_py = tk_app.code_text.tag_ranges("pyspark_var")
-    assert len(ranges_comment) > 0
-    assert len(ranges_py) > 0
+    # 3. Load IoT Preset
+    status, iot_data = _request_json(
+        f"{ui_server}/api/v1/presets/load",
+        method="POST",
+        data={"preset": "IOT_TELEMETRY"}
+    )
+    assert status == 200
+    assert "temperature" in iot_data["columns"]
+    assert len(iot_data["rows"]) == 100
 
 
+def test_ui_server_transform_execution_sql_and_pyspark(ui_server: str) -> None:
+    # SQL Execution
+    sql_code = "SELECT country, COUNT(order_id) AS total_orders FROM data GROUP BY country"
+    status, sql_res = _request_json(
+        f"{ui_server}/api/v1/transform/execute",
+        method="POST",
+        data={"code": sql_code, "engine": "sql", "dataset_name": "ECOMMERCE_SALES"}
+    )
+    assert status == 200
+    assert sql_res["success"] is True
+    assert "country" in sql_res["columns"]
+    assert "total_orders" in sql_res["columns"]
+    assert sql_res["capacity_report"] is not None
+    assert sql_res["audit_record"] is not None
+
+    # AST Filter Execution
+    ast_code = "amount >= 100.0 and category in ['Electronics', 'Home']"
+    status, ast_res = _request_json(
+        f"{ui_server}/api/v1/transform/execute",
+        method="POST",
+        data={"code": ast_code, "engine": "ast_filter", "dataset_name": "ECOMMERCE_SALES"}
+    )
+    assert status == 200
+    assert ast_res["success"] is True
+    assert ast_res["row_count"] > 0
+
+
+def test_ui_server_analytics_endpoints(ui_server: str) -> None:
+    # Summary stats
+    status, stats_res = _request_json(
+        f"{ui_server}/api/v1/analytics/stats",
+        method="POST",
+        data={"column": "amount", "preset": "ECOMMERCE_SALES"}
+    )
+    assert status == 200
+    assert "stats" in stats_res
+    assert stats_res["stats"]["count"] > 0
+    assert stats_res["stats"]["sum"] > 0.0
+
+    # Aggregation for Chart.js
+    status, agg_res = _request_json(
+        f"{ui_server}/api/v1/analytics/aggregate",
+        method="POST",
+        data={
+            "chart_type": "BAR",
+            "x_col": "category",
+            "y_col": "amount",
+            "agg_func": "SUM",
+            "preset": "ECOMMERCE_SALES"
+        }
+    )
+    assert status == 200
+    assert len(agg_res["labels"]) > 0
+    assert len(agg_res["values"]) > 0
+
+
+def test_ui_server_medallion_lifecycle(ui_server: str) -> None:
+    # Promote to Silver with PII Masking
+    status, silver_res = _request_json(
+        f"{ui_server}/api/v1/medallion/promote",
+        method="POST",
+        data={"target_stage": "silver", "dataset_name": "HEALTHCARE_RECORDS"}
+    )
+    assert status == 200
+    assert silver_res["stage"] == "silver"
+    # Verify SSN and Email were masked
+    first_row = silver_res["rows"][0]
+    assert first_row["ssn"] != "100-10-1000"  # Masked/Pseudonymized
+
+    # Promote to Gold (KPI Aggregates)
+    status, gold_res = _request_json(
+        f"{ui_server}/api/v1/medallion/promote",
+        method="POST",
+        data={"target_stage": "gold", "dataset_name": "HEALTHCARE_RECORDS"}
+    )
+    assert status == 200
+    assert gold_res["stage"] == "gold"
+    assert len(gold_res["rows"]) > 0
+
+
+def test_ui_server_connectors_verification(ui_server: str) -> None:
+    # Test SQL SQLite (Embedded)
+    status, sql_test = _request_json(
+        f"{ui_server}/api/v1/connectors/test-sql",
+        method="POST",
+        data={"db_type": "sqlite", "database": ":memory:"}
+    )
+    assert status == 200
+    assert sql_test["status"] == "HEALTHY"
+
+    # Test S3 reachability
+    status, s3_test = _request_json(
+        f"{ui_server}/api/v1/connectors/test-s3",
+        method="POST",
+        data={"bucket_name": "test-lakehouse", "prefix": "data/", "region": "us-east-1"}
+    )
+    assert status == 200
+    assert s3_test["status"] == "HEALTHY"
+
+
+def test_openflow_local_app_headless_controller() -> None:
+    app = OpenFlowLocalApp()
+    assert app.current_engine == "pyspark"
+    assert len(app.current_df) == 100
+
+    # Switch preset
+    app.preset_var.set("IOT_TELEMETRY")
+    app._on_preset_selected()
+    assert "temperature" in app.current_df.columns
+
+    # Switch engine
+    app.set_engine("sql")
+    assert app.current_engine == "sql"
+
+    # Run transform
+    app.code_text.set("SELECT device_id, temperature FROM data WHERE temperature > 25.0")
+    app.run_transformation()
+    assert len(app.current_df) > 0

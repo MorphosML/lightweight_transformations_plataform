@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import tkinter as tk
 from typing import Any, Literal
 import pandas as pd
 
@@ -16,7 +15,7 @@ VS_TITLE_COLOR = "#ffffff"
 
 
 class AnalyticsEngine:
-    """Computes descriptive statistics and aggregated plotting data."""
+    """Pure computational engine for descriptive statistics and aggregated vector charting."""
 
     @classmethod
     def compute_summary_stats(cls, df: pd.DataFrame, column: str) -> dict[str, float]:
@@ -70,12 +69,11 @@ class AnalyticsEngine:
         func = agg_map.get(agg_func, "sum")
 
         if not pd.api.types.is_numeric_dtype(clean_df[y_col]) and func != "count":
-            # Fallback to count for non-numeric Y
             grouped = clean_df.groupby(x_col)[y_col].count().reset_index()
         else:
             grouped = clean_df.groupby(x_col)[y_col].agg(func).reset_index()
 
-        # Sort by value descending and limit top categories
+        # Sort descending and limit
         grouped = grouped.sort_values(by=y_col, ascending=False).head(max_categories)
         labels = [str(x) for x in grouped[x_col]]
         values = [round(float(y), 2) for y in grouped[y_col]]
@@ -97,7 +95,7 @@ class AnalyticsEngine:
         if series.empty:
             return [], []
 
-        min_val, max_val = series.min(), series.max()
+        min_val, max_val = float(series.min()), float(series.max())
         if min_val == max_val:
             return [f"{min_val}"], [float(len(series))]
 
@@ -116,105 +114,114 @@ class AnalyticsEngine:
 
         return bin_labels, [float(c) for c in bin_counts]
 
+    @classmethod
+    def to_chartjs_payload(
+        cls,
+        chart_type: str,
+        labels: list[str],
+        values: list[float],
+        title: str = "ANALYTICS CHART",
+    ) -> dict[str, Any]:
+        """Formats aggregated data into standard Chart.js JSON structure for web/react UI."""
+        return {
+            "type": chart_type.lower(),
+            "title": title,
+            "data": {
+                "labels": labels,
+                "datasets": [
+                    {
+                        "label": title,
+                        "data": values,
+                        "borderColor": VS_LINE_COLOR if chart_type.lower() == "line" else VS_BAR_COLOR,
+                        "backgroundColor": "rgba(35, 134, 54, 0.2)" if chart_type.lower() == "line" else "rgba(0, 122, 204, 0.7)",
+                        "borderWidth": 2,
+                    }
+                ],
+            },
+        }
+
 
 class InteractiveChartCanvas:
-    """Pure-native vector graphics charting canvas for Tkinter."""
+    """Vector canvas renderer supporting both Tkinter Canvas and headless mock/SVG."""
 
-    def __init__(self, canvas: tk.Canvas) -> None:
+    def __init__(self, canvas: Any = None) -> None:
         self.canvas = canvas
-        self.canvas.configure(bg=VS_CANVAS_BG, highlightthickness=0)
-        self.canvas.bind("<Configure>", lambda event: self.redraw())
-
-        # Last plotted data cache for responsive redraw
         self._last_plot_args: dict[str, Any] | None = None
+        if hasattr(self.canvas, "configure"):
+            self.canvas.configure(bg=VS_CANVAS_BG, highlightthickness=0)
+            self.canvas.bind("<Configure>", lambda event: self.redraw())
 
     def clear(self) -> None:
-        self.canvas.delete("all")
+        if hasattr(self.canvas, "delete"):
+            self.canvas.delete("all")
 
     def plot_bar(self, labels: list[str], values: list[float], title: str = "BAR CHART") -> None:
         self._last_plot_args = {"type": "bar", "labels": labels, "values": values, "title": title}
         self.clear()
+        if not hasattr(self.canvas, "create_rectangle"):
+            return
 
-        w = self.canvas.winfo_width() or 600
-        h = self.canvas.winfo_height() or 240
+        w = getattr(self.canvas, "winfo_width", lambda: 600)() or 600
+        h = getattr(self.canvas, "winfo_height", lambda: 240)() or 240
 
         if not labels or not values or max(values, default=0) <= 0:
             self.canvas.create_text(w / 2, h / 2, text="No numeric data available to plot.", fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 10))
             return
 
-        margin_left = 65
-        margin_right = 30
-        margin_top = 35
-        margin_bottom = 45
-
+        margin_left, margin_right, margin_top, margin_bottom = 65, 30, 35, 45
         plot_w = w - margin_left - margin_right
         plot_h = h - margin_top - margin_bottom
         max_val = max(values)
         num_bars = len(labels)
         bar_gap = 12
-        bar_w = max(10, min(60, int((plot_w - (num_bars + 1) * bar_gap) / num_bars)))
+        bar_w = max(10, min(60, int((plot_w - (num_bars + 1) * bar_gap) / max(1, num_bars))))
 
-        # Title
         self.canvas.create_text(margin_left, 16, text=title, fill=VS_TITLE_COLOR, font=("DejaVu Sans Mono", 9, "bold"), anchor="w")
 
-        # Grid and Y Ticks
         num_ticks = 4
         for i in range(num_ticks + 1):
             y_tick_val = (max_val / num_ticks) * i
             y_pos = margin_top + plot_h - (i / num_ticks) * plot_h
-            # Grid line
             self.canvas.create_line(margin_left, y_pos, w - margin_right, y_pos, fill=VS_GRID_COLOR, dash=(2, 4))
-            # Tick text
             self.canvas.create_text(margin_left - 8, y_pos, text=f"{y_tick_val:g}", fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 8), anchor="e")
 
-        # Axes
         self.canvas.create_line(margin_left, margin_top, margin_left, margin_top + plot_h, fill=VS_AXIS_COLOR, width=1)
         self.canvas.create_line(margin_left, margin_top + plot_h, w - margin_right, margin_top + plot_h, fill=VS_AXIS_COLOR, width=1)
 
-        # Draw Bars
         for i, (label, val) in enumerate(zip(labels, values)):
             bx = margin_left + bar_gap + i * (bar_w + bar_gap)
             bh = int((val / max_val) * plot_h) if max_val > 0 else 0
             by = margin_top + plot_h - bh
 
-            # Bar rectangle
             self.canvas.create_rectangle(bx, by, bx + bar_w, margin_top + plot_h, fill=VS_BAR_COLOR, outline="#005999")
-            # Top accent cap line
             self.canvas.create_line(bx, by, bx + bar_w, by, fill="#58a6ff", width=2)
-
-            # Value label on top of bar
             self.canvas.create_text(bx + bar_w / 2, by - 6, text=f"{val:g}", fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 7), anchor="s")
 
-            # X label
             short_lbl = label if len(label) <= 10 else f"{label[:8]}.."
             self.canvas.create_text(bx + bar_w / 2, margin_top + plot_h + 12, text=short_lbl, fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 8), anchor="n")
 
     def plot_line(self, labels: list[str], values: list[float], title: str = "LINE CHART") -> None:
         self._last_plot_args = {"type": "line", "labels": labels, "values": values, "title": title}
         self.clear()
+        if not hasattr(self.canvas, "create_line"):
+            return
 
-        w = self.canvas.winfo_width() or 600
-        h = self.canvas.winfo_height() or 240
+        w = getattr(self.canvas, "winfo_width", lambda: 600)() or 600
+        h = getattr(self.canvas, "winfo_height", lambda: 240)() or 240
 
         if not labels or not values or max(values, default=0) <= 0:
             self.canvas.create_text(w / 2, h / 2, text="No numeric data available to plot.", fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 10))
             return
 
-        margin_left = 65
-        margin_right = 30
-        margin_top = 35
-        margin_bottom = 45
-
+        margin_left, margin_right, margin_top, margin_bottom = 65, 30, 35, 45
         plot_w = w - margin_left - margin_right
         plot_h = h - margin_top - margin_bottom
         max_val = max(values)
         num_points = len(values)
         step_x = plot_w / max(1, num_points - 1)
 
-        # Title
         self.canvas.create_text(margin_left, 16, text=title, fill=VS_TITLE_COLOR, font=("DejaVu Sans Mono", 9, "bold"), anchor="w")
 
-        # Grid lines
         num_ticks = 4
         for i in range(num_ticks + 1):
             y_tick_val = (max_val / num_ticks) * i
@@ -222,35 +229,31 @@ class InteractiveChartCanvas:
             self.canvas.create_line(margin_left, y_pos, w - margin_right, y_pos, fill=VS_GRID_COLOR, dash=(2, 4))
             self.canvas.create_text(margin_left - 8, y_pos, text=f"{y_tick_val:g}", fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 8), anchor="e")
 
-        # Axes
         self.canvas.create_line(margin_left, margin_top, margin_left, margin_top + plot_h, fill=VS_AXIS_COLOR, width=1)
         self.canvas.create_line(margin_left, margin_top + plot_h, w - margin_right, margin_top + plot_h, fill=VS_AXIS_COLOR, width=1)
 
-        # Points and Line
         points = []
         for i, val in enumerate(values):
             px = margin_left + i * step_x
             py = margin_top + plot_h - (int((val / max_val) * plot_h) if max_val > 0 else 0)
             points.append((px, py))
 
-        # Shaded area under curve
-        if len(points) >= 2:
+        if len(points) >= 2 and hasattr(self.canvas, "create_polygon"):
             poly_coords = [margin_left, margin_top + plot_h]
             for px, py in points:
                 poly_coords.extend([px, py])
             poly_coords.extend([points[-1][0], margin_top + plot_h])
             self.canvas.create_polygon(*poly_coords, fill="#122a18", outline="")
 
-        # Draw connecting line segments
         for i in range(len(points) - 1):
             x1, y1 = points[i]
             x2, y2 = points[i + 1]
             self.canvas.create_line(x1, y1, x2, y2, fill=VS_LINE_COLOR, width=2)
 
-        # Draw point dots and labels
         for i, (px, py) in enumerate(points):
-            self.canvas.create_oval(px - 4, py - 4, px + 4, py + 4, fill="#238636", outline="#3fb950")
-            self.canvas.create_oval(px - 2, py - 2, px + 2, py + 2, fill="#ffffff", outline="#ffffff")
+            if hasattr(self.canvas, "create_oval"):
+                self.canvas.create_oval(px - 4, py - 4, px + 4, py + 4, fill="#238636", outline="#3fb950")
+                self.canvas.create_oval(px - 2, py - 2, px + 2, py + 2, fill="#ffffff", outline="#ffffff")
             lbl = labels[i]
             short_lbl = lbl if len(lbl) <= 8 else f"{lbl[:6]}.."
             self.canvas.create_text(px, margin_top + plot_h + 12, text=short_lbl, fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 8), anchor="n")
@@ -263,4 +266,3 @@ class InteractiveChartCanvas:
             self.plot_bar(self._last_plot_args["labels"], self._last_plot_args["values"], self._last_plot_args["title"])
         elif ptype == "line":
             self.plot_line(self._last_plot_args["labels"], self._last_plot_args["values"], self._last_plot_args["title"])
-

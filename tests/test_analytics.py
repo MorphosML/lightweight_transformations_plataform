@@ -1,9 +1,8 @@
-import tkinter as tk
+from typing import Any
 import pandas as pd
 import pytest
 
 from openflow_ui.analytics import AnalyticsEngine, InteractiveChartCanvas
-from openflow_ui.app import OpenFlowLocalApp
 
 
 @pytest.fixture
@@ -72,56 +71,63 @@ def test_analytics_histogram_binning(sample_df: pd.DataFrame) -> None:
     assert cnts[0] == 3.0
 
 
-@pytest.fixture
-def tk_app():
-    root = tk.Tk()
-    root.withdraw()
-    app = OpenFlowLocalApp(root)
-    yield app
-    root.destroy()
+def test_chartjs_payload_generation(sample_df: pd.DataFrame) -> None:
+    labels, values = AnalyticsEngine.aggregate_data(sample_df, "category", "amount", agg_func="SUM")
+    payload = AnalyticsEngine.to_chartjs_payload("bar", labels, values, title="CATEGORY SUM")
+    assert payload["type"] == "bar"
+    assert payload["title"] == "CATEGORY SUM"
+    assert payload["data"]["labels"] == labels
+    assert payload["data"]["datasets"][0]["data"] == values
 
 
-def test_interactive_canvas_plotting(tk_app: OpenFlowLocalApp) -> None:
-    canvas_widget = tk.Canvas(tk_app.root, width=400, height=200)
-    chart = InteractiveChartCanvas(canvas_widget)
+class MockCanvas:
+    """Mock canvas object simulating vector drawing commands."""
+
+    def __init__(self) -> None:
+        self.elements: list[dict[str, Any]] = []
+
+    def winfo_width(self) -> int:
+        return 600
+
+    def winfo_height(self) -> int:
+        return 240
+
+    def delete(self, tag: str) -> None:
+        self.elements.clear()
+
+    def create_rectangle(self, *args: Any, **kwargs: Any) -> int:
+        self.elements.append({"type": "rect", "args": args, "kwargs": kwargs})
+        return len(self.elements)
+
+    def create_line(self, *args: Any, **kwargs: Any) -> int:
+        self.elements.append({"type": "line", "args": args, "kwargs": kwargs})
+        return len(self.elements)
+
+    def create_text(self, *args: Any, **kwargs: Any) -> int:
+        self.elements.append({"type": "text", "args": args, "kwargs": kwargs})
+        return len(self.elements)
+
+    def create_oval(self, *args: Any, **kwargs: Any) -> int:
+        self.elements.append({"type": "oval", "args": args, "kwargs": kwargs})
+        return len(self.elements)
+
+    def create_polygon(self, *args: Any, **kwargs: Any) -> int:
+        self.elements.append({"type": "poly", "args": args, "kwargs": kwargs})
+        return len(self.elements)
+
+
+def test_interactive_canvas_plotting() -> None:
+    mock = MockCanvas()
+    chart = InteractiveChartCanvas(mock)
 
     # Plot bar
     chart.plot_bar(["A", "B", "C"], [10.0, 20.0, 30.0], title="TEST BAR")
-    assert len(canvas_widget.find_all()) > 0
+    assert len(mock.elements) > 0
 
     # Plot line
     chart.plot_line(["A", "B", "C"], [10.0, 20.0, 30.0], title="TEST LINE")
-    assert len(canvas_widget.find_all()) > 0
+    assert len(mock.elements) > 0
 
-    # Clear and redraw
-    chart.redraw()
-    assert len(canvas_widget.find_all()) > 0
+    # Clear
     chart.clear()
-    assert len(canvas_widget.find_all()) == 0
-
-
-def test_studio_bottom_panel_analytics_toggle(tk_app: OpenFlowLocalApp) -> None:
-    # Switch to analytics tab
-    tk_app.switch_bottom_panel("analytics")
-    assert tk_app.analytics_container.winfo_manager() == "pack"
-
-    # Verify summary stats label populated
-    stats_text = tk_app.analytics_stats_lbl.cget("text")
-    assert "STATS [" in stats_text
-    assert "COUNT:" in stats_text
-    assert "MEAN:" in stats_text
-
-    # Change chart type to HISTOGRAM and re-plot
-    tk_app.chart_type_combo.set("HISTOGRAM")
-    tk_app.update_analytics_plot()
-    assert "FREQUENCY DISTRIBUTION" in tk_app.chart_canvas._last_plot_args["title"]
-
-    # Change chart type to LINE
-    tk_app.chart_type_combo.set("LINE")
-    tk_app.update_analytics_plot()
-    assert "TREND BY" in tk_app.chart_canvas._last_plot_args["title"]
-
-    # Switch back to preview
-    tk_app.switch_bottom_panel("preview")
-    assert tk_app.table_container.winfo_manager() == "pack"
-
+    assert len(mock.elements) == 0
