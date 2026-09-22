@@ -131,3 +131,45 @@ def test_interactive_canvas_plotting() -> None:
     # Clear
     chart.clear()
     assert len(mock.elements) == 0
+
+
+def test_plotly_figure_generation(sample_df: pd.DataFrame) -> None:
+    html = AnalyticsEngine.generate_plotly_figure(sample_df, "category", "amount", chart_type="BAR")
+    assert "<div" in html or "<script" in html
+    assert len(html) > 100
+
+    html_hist = AnalyticsEngine.generate_plotly_figure(sample_df, "amount", "amount", chart_type="HISTOGRAM")
+    assert len(html_hist) > 100
+
+
+def test_seaborn_figure_generation(sample_df: pd.DataFrame) -> None:
+    svg = AnalyticsEngine.generate_seaborn_figure(sample_df, "category", "amount", chart_type="BAR")
+    assert "<svg" in svg
+    assert "</svg>" in svg
+
+    svg_hist = AnalyticsEngine.generate_seaborn_figure(sample_df, "amount", "amount", chart_type="HISTOGRAM")
+    assert "<svg" in svg_hist
+
+
+def test_matplotlib_figure_generation(sample_df: pd.DataFrame) -> None:
+    svg = AnalyticsEngine.generate_matplotlib_figure(sample_df, "category", "amount", chart_type="LINE")
+    assert "<svg" in svg
+    assert "</svg>" in svg
+
+
+def test_unified_plot_dataset_dispatch(sample_df: pd.DataFrame) -> None:
+    # Test Plotly
+    res_plotly = AnalyticsEngine.plot_dataset(sample_df, engine="plotly", chart_type="BAR", x_col="category", y_col="amount")
+    assert res_plotly["format"] == "html"
+    assert len(res_plotly["content"]) > 0
+
+    # Test Seaborn
+    res_seaborn = AnalyticsEngine.plot_dataset(sample_df, engine="seaborn", chart_type="LINE", x_col="category", y_col="amount")
+    assert res_seaborn["format"] == "svg"
+    assert "<svg" in res_seaborn["content"]
+
+    # Test Matplotlib
+    res_mpl = AnalyticsEngine.plot_dataset(sample_df, engine="matplotlib", chart_type="HISTOGRAM", x_col="amount", y_col="amount")
+    assert res_mpl["format"] == "svg"
+    assert "<svg" in res_mpl["content"]
+

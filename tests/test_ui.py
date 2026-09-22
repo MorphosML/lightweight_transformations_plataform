@@ -32,16 +32,16 @@ def _request_json(url: str, method: str = "GET", data: dict | None = None) -> tu
         return status, content
 
 
-def test_ui_server_serves_react_studio_html(ui_server: str) -> None:
+def test_ui_server_serves_local_desktop_html(ui_server: str) -> None:
     req = urllib.request.Request(f"{ui_server}/")
     with _opener.open(req) as response:
         assert response.status == 200
         html = response.read().decode("utf-8")
         assert "OpenFlow" in html
-        assert "Modern Web Desktop" in html
-        assert "react" in html.lower()
-        assert "monaco" in html.lower()
-        assert "chart.js" in html.lower()
+        assert "Desktop" in html
+        # Zero external CDN dependencies
+        assert '<script src="https://' not in html
+        assert '<link rel="stylesheet" href="https://' not in html
 
 
 def test_ui_server_presets_list_and_load(ui_server: str) -> None:
@@ -191,3 +191,65 @@ def test_openflow_local_app_headless_controller() -> None:
     app.code_text.set("SELECT device_id, temperature FROM data WHERE temperature > 25.0")
     app.run_transformation()
     assert len(app.current_df) > 0
+
+
+def test_ui_server_analytics_plot_endpoint(ui_server: str) -> None:
+    # 1. Test Plotly
+    status, plot_plotly = _request_json(
+        f"{ui_server}/api/v1/analytics/plot",
+        method="POST",
+        data={
+            "engine": "plotly",
+            "chart_type": "BAR",
+            "x_col": "category",
+            "y_col": "amount",
+            "agg_func": "SUM",
+            "preset": "ECOMMERCE_SALES"
+        }
+    )
+    assert status == 200
+    assert plot_plotly["engine"] == "plotly"
+    assert plot_plotly["format"] == "html"
+    assert len(plot_plotly["content"]) > 0
+
+    # 2. Test Seaborn
+    status, plot_sns = _request_json(
+        f"{ui_server}/api/v1/analytics/plot",
+        method="POST",
+        data={
+            "engine": "seaborn",
+            "chart_type": "LINE",
+            "x_col": "category",
+            "y_col": "amount",
+            "agg_func": "AVG",
+            "preset": "ECOMMERCE_SALES"
+        }
+    )
+    assert status == 200
+    assert plot_sns["engine"] == "seaborn"
+    assert plot_sns["format"] == "svg"
+    assert "<svg" in plot_sns["content"]
+
+    # 3. Test Matplotlib
+    status, plot_mpl = _request_json(
+        f"{ui_server}/api/v1/analytics/plot",
+        method="POST",
+        data={
+            "engine": "matplotlib",
+            "chart_type": "HISTOGRAM",
+            "x_col": "amount",
+            "y_col": "amount",
+            "preset": "ECOMMERCE_SALES"
+        }
+    )
+    assert status == 200
+    assert plot_mpl["engine"] == "matplotlib"
+    assert plot_mpl["format"] == "svg"
+    assert "<svg" in plot_mpl["content"]
+
+
+def test_openflow_native_window_class() -> None:
+    from openflow_ui.app import OpenFlowNativeWindow
+    win = OpenFlowNativeWindow("http://127.0.0.1:8000")
+    assert win.url == "http://127.0.0.1:8000"
+

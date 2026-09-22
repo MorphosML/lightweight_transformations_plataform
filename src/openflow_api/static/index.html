@@ -3,128 +3,544 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenFlow ELT Platform Studio — Modern Web Desktop</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            vsDark: '#1e1e1e',
-            vsSidebar: '#252526',
-            vsActivity: '#333333',
-            vsTabBar: '#2d2d2d',
-            vsBorder: '#2b2b2b',
-            vsBlue: '#007acc',
-            vsBlueHover: '#0098ff',
-            vsGreen: '#238636',
-            vsGreenHover: '#2ea043',
-            vsRed: '#f85149',
-            vsGold: '#d29922',
-            vsSilver: '#8b949e',
-            vsBronze: '#bc8c54'
-          }
-        }
-      }
-    };
-  </script>
-
-  <!-- React 18, ReactDOM 18, Babel Standalone -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
-
-  <!-- Monaco Editor AMD Loader -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
-
-  <!-- Chart.js for Vector Analytics -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
+  <title>OpenFlow ELT Platform Studio — Local Desktop Edition</title>
   <style>
+    /* 100% All-Local Pure Industrial Stylesheet (Zero CDN Dependencies) */
     * {
-      border-radius: 0px !important;
       box-sizing: border-box;
-    }
-    body {
       margin: 0;
       padding: 0;
-      background-color: #1e1e1e;
-      color: #cccccc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      overflow: hidden;
-      height: 100vh;
-    }
-    .monaco-editor, .monaco-editor .overflow-guard {
       border-radius: 0px !important;
     }
-    ::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
+    :root {
+      --bg-dark: #1e1e1e;
+      --bg-sidebar: #252526;
+      --bg-activity: #333333;
+      --bg-tab: #2d2d2d;
+      --border-color: #2b2b2b;
+      --accent-blue: #007acc;
+      --accent-blue-hover: #0098ff;
+      --accent-green: #238636;
+      --accent-green-hover: #2ea043;
+      --text-main: #cccccc;
+      --text-muted: #858585;
+      --text-bright: #ffffff;
+      --danger-red: #f85149;
     }
-    ::-webkit-scrollbar-track {
-      background: #1e1e1e;
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, monospace;
+      font-size: 12px;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #424242;
+    /* Layout */
+    .top-bar {
+      height: 38px;
+      background: var(--bg-activity);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
     }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #4f4f4f;
+    .main-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
     }
+    .sidebar {
+      width: 260px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .status-bar {
+      height: 24px;
+      background: var(--accent-blue);
+      color: var(--text-bright);
+      font-size: 11px;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+    }
+    /* Components */
+    .nav-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-btn:hover {
+      background: #383838;
+      color: var(--text-bright);
+    }
+    .nav-btn.active {
+      background: var(--bg-dark);
+      color: var(--text-bright);
+      border-top: 2px solid var(--accent-blue);
+    }
+    .btn {
+      background: var(--accent-blue);
+      color: var(--text-bright);
+      border: none;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:hover { background: var(--accent-blue-hover); }
+    .btn-green { background: var(--accent-green); }
+    .btn-green:hover { background: var(--accent-green-hover); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background: #333333;
+      color: var(--text-bright);
+    }
+    .input, .select {
+      width: 100%;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      color: var(--text-bright);
+      padding: 6px 8px;
+      font-size: 12px;
+      font-family: monospace;
+      outline: none;
+    }
+    .input:focus, .select:focus {
+      border-color: var(--accent-blue);
+    }
+    .label {
+      font-size: 10px;
+      font-weight: bold;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      display: block;
+    }
+    /* Editor */
+    .editor-wrapper {
+      flex: 1;
+      display: flex;
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border-color);
+      position: relative;
+    }
+    .editor-line-numbers {
+      width: 44px;
+      background: #181818;
+      border-right: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 20px;
+      padding: 8px 4px;
+      text-align: right;
+      user-select: none;
+    }
+    .editor-textarea {
+      flex: 1;
+      background: transparent;
+      color: #9cdcfe;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 8px;
+      font-family: 'DejaVu Sans Mono', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 20px;
+      white-space: pre;
+      overflow: auto;
+    }
+    /* Grid & Output */
+    .table-container {
+      height: 240px;
+      background: var(--bg-dark);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .table-header-strip {
+      height: 28px;
+      background: var(--bg-tab);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      font-size: 11px;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-family: monospace;
+    }
+    .data-table th {
+      background: var(--bg-sidebar);
+      padding: 5px 8px;
+      border-right: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-muted);
+      position: sticky;
+      top: 0;
+    }
+    .data-table td {
+      padding: 4px 8px;
+      border-right: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+      white-space: nowrap;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .data-table tr:hover { background: #262626; }
+    /* Analytics Panel */
+    .analytics-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    .analytics-toolbar {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+    }
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    .stat-card {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-color);
+      padding: 8px;
+      text-align: center;
+    }
+    .stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+    .stat-val { font-size: 14px; font-weight: bold; color: var(--text-bright); margin-top: 2px; }
+    .plot-container {
+      flex: 1;
+      min-height: 380px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 8px;
+    }
+    .plot-container svg { width: 100%; height: 100%; max-height: 480px; }
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: #424242; }
+    ::-webkit-scrollbar-thumb:hover { background: #4f4f4f; }
   </style>
 </head>
-<body class="dark bg-vsDark select-none">
-  <div id="root" class="h-screen w-screen flex flex-col"></div>
+<body>
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef, useMemo } = React;
+  <!-- Top Activity Bar -->
+  <div class="top-bar">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-weight:bold; color:#fff; letter-spacing:0.5px; border-right:1px solid var(--border-color); padding-right:12px;">OPENFLOW ELT PLATFORM STUDIO</span>
+      <button class="nav-btn active" id="tab-transform" onclick="switchTab('transform')">TRANSFORM</button>
+      <button class="nav-btn" id="tab-analytics" onclick="switchTab('analytics')">ANALYTICS</button>
+      <button class="nav-btn" id="tab-medallion" onclick="switchTab('medallion')">LAKEHOUSE</button>
+      <button class="nav-btn" id="tab-connectors" onclick="switchTab('connectors')">CONNECTORS</button>
+    </div>
 
-    // SVG Icons (Zero Emojis)
-    const Icons = {
-      Play: () => (
-        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 16 16">
-          <path d="M4 2v12l10-6z" />
-        </svg>
-      ),
-      Database: () => (
-        <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16">
-          <path d="M8 1c-3.86 0-7 1.12-7 2.5v9C1 13.88 4.14 15 8 15s7-1.12 7-2.5v-9C15 2.12 11.86 1 8 1zm0 1c3.15 0 5.5.86 5.91 1.5C13.5 4.14 11.15 5 8 5S2.5 4.14 2.09 3.5C2.5 2.86 4.85 2 8 2zm5.95 3.32c-.52.54-1.87 1.18-3.95 1.51v1.94c2.08-.33 3.43-.97 3.95-1.51v-1.94zM8 7c-3.15 0-5.5-.86-5.91-1.5v1.94c.52.54 1.87 1.18 3.95 1.51V7.01C8 7.01 8 7 8 7zm5.95 4.32c-.52.54-1.87 1.18-3.95 1.51v1.94c2.08-.33 3.43-.97 3.95-1.51v-1.94zM8 11c-3.15 0-5.5-.86-5.91-1.5v1.94c.52.54 1.87 1.18 3.95 1.51V11.01C8 11.01 8 11 8 11z"/>
-        </svg>
-      ),
-      Chart: () => (
-        <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16">
-          <path d="M1 1v14h14v-1H2V1H1zm3 10h2V6H4v5zm4 0h2V3H8v8zm4 0h2V8h-2v3z"/>
-        </svg>
-      ),
-      Layers: () => (
-        <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16">
-          <path d="M8 1L1 4.5l7 3.5 7-3.5L8 1zm0 5.8L3 4.5 8 2l5 2.5-5 2.3zM1 8l7 3.5L15 8l1 .5-8 4-8-4L1 8zm0 3.5l7 3.5 7-3.5 1 .5-8 4-8-4-1-.5z"/>
-        </svg>
-      ),
-      Shield: () => (
-        <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16">
-          <path d="M8 0L1 3v5c0 4.5 3.5 8.5 7 9 3.5-.5 7-4.5 7-9V3L8 0zm0 15c-2.7-.4-5.5-3.8-5.5-7V3.8L8 1.4l5.5 2.4V8c0 3.2-2.8 6.6-5.5 7z"/>
-        </svg>
-      ),
-      Cpu: () => (
-        <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16">
-          <path d="M5 1v1H3v2H1v2h1v4H1v2h2v2h2v1h2v-1h2v1h2v-1h2v-2h1v-2h-1V8h1V6h-1V4h-2V2h-2V1h-2v1H7V1H5zm0 3h6v8H5V4zm1 1v6h4V5H6z"/>
-        </svg>
-      ),
-      Refresh: () => (
-        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 16 16">
-          <path d="M8 3a5 5 0 104.546 2.914.5.5 0 01.908-.418A6 6 0 118 2v1z"/>
-          <path d="M8 0l3 3-3 3V0z"/>
-        </svg>
-      )
-    };
+    <!-- Capacity Telemetry & Run -->
+    <div style="display:flex; align-items:center; gap:16px; font-family:monospace; font-size:11px;">
+      <span>TIER: <strong id="top-tier" style="color:var(--accent-green)">TIER 0: EMBEDDED OLAP</strong></span>
+      <span>CU: <strong id="top-cu" style="color:var(--accent-blue)">0.00</strong></span>
+      <span>SAVINGS: <strong id="top-savings" style="color:var(--accent-green)">$0.00</strong></span>
+      <button class="btn btn-green" onclick="executeTransformation()">RUN [F5]</button>
+    </div>
+  </div>
 
-    const CODE_STARTERS = {
+  <!-- Main Body -->
+  <div class="main-body">
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <label class="label">DATASET PRESET</label>
+        <select class="select" id="preset-select" onchange="loadPreset(this.value)">
+          <option value="ECOMMERCE_SALES">ECOMMERCE_SALES</option>
+          <option value="IOT_TELEMETRY">IOT_TELEMETRY</option>
+          <option value="FINANCIAL_LEDGER">FINANCIAL_LEDGER</option>
+          <option value="HEALTHCARE_RECORDS">HEALTHCARE_RECORDS</option>
+        </select>
+      </div>
+
+      <div id="engine-selector-box">
+        <label class="label">COMPUTE ENGINE</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+          <button class="btn" id="eng-pyspark" onclick="setEngine('pyspark')">PYSPARK</button>
+          <button class="btn btn-outline" id="eng-ast_filter" onclick="setEngine('ast_filter')">AST FILTER</button>
+          <button class="btn btn-outline" id="eng-sql" onclick="setEngine('sql')">SQL</button>
+          <button class="btn btn-outline" id="eng-pandas" onclick="setEngine('pandas')">PANDAS</button>
+        </div>
+      </div>
+
+      <div style="flex:1; display:flex; flex-direction:column; min-height:140px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <label class="label">SCHEMA COLUMNS</label>
+          <span style="font-size:10px; color:var(--text-muted);" id="col-count">0 COLS</span>
+        </div>
+        <div style="flex:1; background:var(--bg-dark); border:1px solid var(--border-color); padding:4px; overflow-y:auto; font-family:monospace; font-size:11px;" id="schema-list">
+        </div>
+      </div>
+
+      <div style="background:var(--bg-dark); border:1px solid var(--border-color); padding:8px; font-size:11px; font-family:monospace;">
+        <div style="font-size:10px; font-weight:bold; color:var(--text-muted); margin-bottom:6px;">FINOPS CAPACITY GOVERNOR</div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span style="color:var(--text-muted)">Route:</span>
+          <span id="finops-route" style="color:#fff">Tier 0 OLAP</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span style="color:var(--text-muted)">Capacity Units:</span>
+          <span id="finops-cu" style="color:var(--accent-blue); font-weight:bold;">0.00 CU</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">Avoided Cost:</span>
+          <span id="finops-cost" style="color:var(--accent-green); font-weight:bold;">$0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Panels -->
+    <div class="content-area">
+      
+      <!-- Panel 1: Transform Studio -->
+      <div id="panel-transform" style="flex:1; display:flex; flex-direction:column;">
+        <div class="editor-wrapper">
+          <div class="editor-line-numbers" id="line-numbers">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10</div>
+          <textarea class="editor-textarea" id="code-editor" spellcheck="false" placeholder="Write code here..."></textarea>
+        </div>
+
+        <div class="table-container">
+          <div class="table-header-strip">
+            <span style="font-weight:bold; color:#fff;" id="table-title">EXECUTION OUTPUT PREVIEW (0 ROWS)</span>
+            <div style="color:var(--text-muted); font-family:monospace; font-size:11px;">
+              <span>DURATION: <strong id="dur-val" style="color:#fff">0.0ms</strong></span> |
+              <span>STATUS: <strong id="status-val" style="color:var(--accent-green)">READY</strong></span>
+            </div>
+          </div>
+          <div style="flex:1; overflow:auto;">
+            <table class="data-table">
+              <thead id="data-thead"></thead>
+              <tbody id="data-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Multi-Engine Analytics Studio -->
+      <div id="panel-analytics" class="analytics-view" style="display:none;">
+        <div class="analytics-toolbar">
+          <div style="min-width:160px;">
+            <label class="label">PLOTTING ENGINE</label>
+            <select class="select" id="plot-engine" onchange="renderPlot()">
+              <option value="plotly">PLOTLY (INTERACTIVE WEBGL)</option>
+              <option value="seaborn">SEABORN (STATISTICAL)</option>
+              <option value="matplotlib">MATPLOTLIB (INDUSTRIAL)</option>
+              <option value="vector">VECTOR (BUILT-IN)</option>
+            </select>
+          </div>
+
+          <div style="min-width:140px;">
+            <label class="label">CHART TYPE</label>
+            <select class="select" id="plot-type" onchange="renderPlot()">
+              <option value="LINE">LINE TREND</option>
+              <option value="BAR">BAR CHART</option>
+              <option value="HISTOGRAM">HISTOGRAM / DISTRIBUTION</option>
+              <option value="SCATTER">SCATTER PLOT</option>
+              <option value="BOX">BOX PLOT</option>
+            </select>
+          </div>
+
+          <div style="min-width:120px;">
+            <label class="label">X AXIS (GROUP)</label>
+            <select class="select" id="plot-xcol" onchange="renderPlot()"></select>
+          </div>
+
+          <div style="min-width:120px;">
+            <label class="label">Y AXIS (METRIC)</label>
+            <select class="select" id="plot-ycol" onchange="renderPlot()"></select>
+          </div>
+
+          <div style="min-width:100px;">
+            <label class="label">AGGREGATION</label>
+            <select class="select" id="plot-agg" onchange="renderPlot()">
+              <option value="SUM">SUM</option>
+              <option value="AVG">AVERAGE</option>
+              <option value="COUNT">COUNT</option>
+              <option value="MIN">MIN</option>
+              <option value="MAX">MAX</option>
+            </select>
+          </div>
+
+          <div>
+            <button class="btn" onclick="renderPlot()">RENDER PLOT</button>
+          </div>
+        </div>
+
+        <!-- Metric Pills -->
+        <div class="stats-strip">
+          <div class="stat-card"><div class="stat-label">COUNT</div><div class="stat-val" id="st-count">0</div></div>
+          <div class="stat-card"><div class="stat-label">SUM</div><div class="stat-val" id="st-sum">0</div></div>
+          <div class="stat-card"><div class="stat-label">MEAN</div><div class="stat-val" id="st-mean">0</div></div>
+          <div class="stat-card"><div class="stat-label">MIN</div><div class="stat-val" id="st-min">0</div></div>
+          <div class="stat-card"><div class="stat-label">MAX</div><div class="stat-val" id="st-max">0</div></div>
+          <div class="stat-card"><div class="stat-label">STD DEV</div><div class="stat-val" id="st-std">0</div></div>
+        </div>
+
+        <!-- Render Target -->
+        <div class="plot-container" id="plot-target">
+          <span style="color:var(--text-muted); font-family:monospace;">Select options and click Render Plot</span>
+        </div>
+      </div>
+
+      <!-- Panel 3: Medallion Lakehouse Studio -->
+      <div id="panel-medallion" style="display:none; padding:16px; display:flex; flex-direction:column; gap:16px; overflow-y:auto;">
+        <div style="background:var(--bg-sidebar); border:1px solid var(--border-color); padding:16px;">
+          <h3 style="color:#fff; font-size:13px; font-weight:bold; text-transform:uppercase; margin-bottom:8px;">MEDALLION LAKEHOUSE ARCHITECTURE</h3>
+          <p style="color:var(--text-muted); font-size:12px; line-height:1.5; margin-bottom:14px;">
+            Stage raw ingest payloads into <strong>Bronze</strong>, cleanse and pseudonymize sensitive PII into <strong>Silver</strong>, and generate curated business KPI tables into <strong>Gold</strong>.
+          </p>
+          <div style="display:flex; gap:12px;">
+            <button class="btn btn-outline" onclick="promoteMedallion('bronze')" style="border-color:#bc8c54; color:#bc8c54;">STAGE 1: BRONZE (RAW)</button>
+            <button class="btn btn-outline" onclick="promoteMedallion('silver')" style="border-color:#8b949e; color:#8b949e;">STAGE 2: SILVER (MASK PII)</button>
+            <button class="btn btn-outline" onclick="promoteMedallion('gold')" style="border-color:#d29922; color:#d29922;">STAGE 3: GOLD (KPIS)</button>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-dark); border:1px solid var(--border-color); padding:12px;">
+          <div style="font-weight:bold; color:#fff; font-size:11px; text-transform:uppercase; margin-bottom:8px;">STAGE AUDIT MANIFEST</div>
+          <div id="medallion-history" style="font-family:monospace; font-size:11px; display:flex; flex-direction:column; gap:6px;">
+            <div style="padding:6px; background:var(--bg-sidebar); border:1px solid var(--border-color);">
+              <strong>[INITIALIZED]</strong> Lakehouse ready for stage promotion.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 4: Cloud Connectors & Governance -->
+      <div id="panel-connectors" style="display:none; padding:16px; display:flex; flex-direction:column; gap:16px; overflow-y:auto;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          
+          <div style="background:var(--bg-sidebar); border:1px solid var(--border-color); padding:14px; display:flex; flex-direction:column; gap:10px;">
+            <h4 style="color:#fff; font-size:12px; font-weight:bold; text-transform:uppercase;">SQL ENDPOINT CONNECTOR</h4>
+            <div>
+              <label class="label">DATABASE ENGINE</label>
+              <select class="select" id="sql-engine">
+                <option value="sqlite">SQLite (Embedded Micro-OLAP)</option>
+                <option value="postgresql">PostgreSQL</option>
+                <option value="mysql">MySQL</option>
+                <option value="snowflake">Snowflake</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">HOST / ENDPOINT</label>
+              <input class="input" id="sql-host" value="127.0.0.1" />
+            </div>
+            <div>
+              <label class="label">DATABASE</label>
+              <input class="input" id="sql-db" value=":memory:" />
+            </div>
+            <button class="btn" onclick="testSqlEndpoint()">VERIFY SQL CONNECTION</button>
+          </div>
+
+          <div style="background:var(--bg-sidebar); border:1px solid var(--border-color); padding:14px; display:flex; flex-direction:column; gap:10px;">
+            <h4 style="color:#fff; font-size:12px; font-weight:bold; text-transform:uppercase;">AWS S3 / OBJECT STORAGE</h4>
+            <div>
+              <label class="label">BUCKET NAME</label>
+              <input class="input" id="s3-bucket" value="prod-lakehouse-bucket" />
+            </div>
+            <div>
+              <label class="label">PREFIX / DIRECTORY</label>
+              <input class="input" id="s3-prefix" value="telemetry/" />
+            </div>
+            <div>
+              <label class="label">REGION</label>
+              <input class="input" id="s3-region" value="us-east-1" />
+            </div>
+            <button class="btn" onclick="testS3Endpoint()">VERIFY S3 REACHABILITY</button>
+          </div>
+
+        </div>
+
+        <div id="conn-result" style="display:none; padding:10px; background:var(--bg-sidebar); border:1px solid var(--border-color); font-family:monospace; font-size:11px;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom Status Bar -->
+  <div class="status-bar">
+    <div style="display:flex; gap:12px;">
+      <span><strong>[OPENFLOW LOCAL]</strong></span>
+      <span id="footer-msg">INITIALIZED LOCAL ENGINE</span>
+    </div>
+    <div style="display:flex; gap:16px;">
+      <span>PORT: 8000</span>
+      <span>MODE: ALL-LOCAL DESKTOP</span>
+      <span>OFFLINE SAFE</span>
+    </div>
+  </div>
+
+  <script>
+    // 100% Pure Local Controller (Zero External JS Toolchains)
+    let currentEngine = 'pyspark';
+    let currentPreset = 'ECOMMERCE_SALES';
+    let activeColumns = [];
+    let activeRows = [];
+
+    const STARTERS = {
       pyspark: `# transform.py (PySpark)
-# 'df' is PySpark DataFrame, 'F' is pyspark.sql.functions, 'spark' is SparkSession
-
 df_out = (
     df.filter(F.col("amount") > 50.0)
       .groupBy("country", "category")
@@ -149,8 +565,6 @@ GROUP BY country, category
 ORDER BY total_revenue DESC
 `,
       pandas: `# transform.py (Pandas Vectorized)
-# 'df' is pandas DataFrame
-
 df_out = df[df['amount'] > 50.0].groupby(['country', 'category']).agg(
     total_orders=('order_id', 'count'),
     total_revenue=('amount', 'sum')
@@ -158,733 +572,280 @@ df_out = df[df['amount'] > 50.0].groupby(['country', 'category']).agg(
 `
     };
 
-    function OpenFlowStudioApp() {
-      const [activeTab, setActiveTab] = useState("transform"); // transform | analytics | medallion | connectors
-      const [engine, setEngine] = useState("pyspark");
-      const [preset, setPreset] = useState("ECOMMERCE_SALES");
-      const [presetsList, setPresetsList] = useState(["ECOMMERCE_SALES", "IOT_TELEMETRY", "FINANCIAL_LEDGER", "HEALTHCARE_RECORDS"]);
-      
-      const [code, setCode] = useState(CODE_STARTERS.pyspark);
-      const [statusMsg, setStatusMsg] = useState("READY — PRESS F5 OR CLICK EXECUTE");
-      const [isRunning, setIsRunning] = useState(false);
-      
-      // Data and Telemetry
-      const [columns, setColumns] = useState([]);
-      const [rows, setRows] = useState([]);
-      const [telemetry, setTelemetry] = useState({ duration_ms: 0, row_count: 0, memory_mb: 0 });
-      const [capacityReport, setCapacityReport] = useState({ tier: "TIER 0: EMBEDDED OLAP", capacity_units: 0.0, cost_avoidance_usd: 0.0, engine_used: "micro_olap" });
-      const [auditRecord, setAuditRecord] = useState(null);
-
-      // Analytics Controls
-      const [chartType, setChartType] = useState("LINE");
-      const [xCol, setXCol] = useState("");
-      const [yCol, setYCol] = useState("");
-      const [aggFunc, setAggFunc] = useState("SUM");
-      const [summaryStats, setSummaryStats] = useState({ count: 0, sum: 0, mean: 0, min: 0, max: 0, std: 0 });
-
-      // Connectors
-      const [sqlConn, setSqlConn] = useState({ db_type: "sqlite", host: "127.0.0.1", port: 5432, database: ":memory:", username: "openflow", password: "" });
-      const [s3Conn, setS3Conn] = useState({ bucket_name: "prod-lakehouse-bucket", prefix: "telemetry/", region: "us-east-1" });
-      const [connStatus, setConnStatus] = useState("");
-
-      // Medallion
-      const [medallionStage, setMedallionStage] = useState("bronze");
-      const [medallionHistory, setMedallionHistory] = useState([
-        { stage: "BRONZE", timestamp: new Date().toLocaleTimeString(), rows: 100, desc: "Raw ingestion payload" }
-      ]);
-
-      const editorContainerRef = useRef(null);
-      const monacoEditorRef = useRef(null);
-      const chartCanvasRef = useRef(null);
-      const chartInstanceRef = useRef(null);
-
-      // Initialize Monaco Editor
-      useEffect(() => {
-        if (window.require && editorContainerRef.current && !monacoEditorRef.current) {
-          window.require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
-          window.require(['vs/editor/editor.main'], function () {
-            monacoEditorRef.current = monaco.editor.create(editorContainerRef.current, {
-              value: code,
-              language: engine === 'sql' ? 'sql' : 'python',
-              theme: 'vs-dark',
-              fontSize: 13,
-              fontFamily: "'DejaVu Sans Mono', 'Courier New', monospace",
-              automaticLayout: true,
-              minimap: { enabled: true },
-              lineNumbers: 'on',
-              scrollBeyondLastLine: false,
-              renderLineHighlight: 'all',
-              roundedSelection: false
-            });
-
-            monacoEditorRef.current.onDidChangeModelContent(() => {
-              setCode(monacoEditorRef.current.getValue());
-            });
-
-            // Keyboard shortcut F5 or Ctrl+Enter
-            monacoEditorRef.current.addCommand(monaco.KeyCode.F5, () => {
-              executeTransformation();
-            });
-            monacoEditorRef.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-              executeTransformation();
-            });
-          });
-        }
-      }, []);
-
-      // Load initial preset
-      useEffect(() => {
-        loadPresetData("ECOMMERCE_SALES");
-      }, []);
-
-      const loadPresetData = async (presetName) => {
-        try {
-          setStatusMsg("LOADING DATASET...");
-          const res = await fetch('/api/v1/presets/load', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ preset: presetName })
-          });
-          const data = await res.json();
-          setColumns(data.columns || []);
-          setRows(data.rows || []);
-          setPreset(presetName);
-          setStatusMsg(`LOADED ${presetName} (${(data.rows || []).length} ROWS)`);
-
-          // Set default x and y for analytics
-          if (data.columns && data.columns.length >= 2) {
-            setXCol(data.columns[0]);
-            setYCol(data.columns[1]);
-            computeColumnStats(data.columns[1], data.rows || []);
-          }
-        } catch (e) {
-          setStatusMsg("ERROR LOADING PRESET: " + e.message);
-        }
-      };
-
-      const handleEngineSwitch = (newEngine) => {
-        setEngine(newEngine);
-        const starter = CODE_STARTERS[newEngine] || "";
-        setCode(starter);
-        if (monacoEditorRef.current) {
-          monacoEditorRef.current.setValue(starter);
-          const model = monacoEditorRef.current.getModel();
-          if (model) {
-            monaco.editor.setModelLanguage(model, newEngine === 'sql' ? 'sql' : 'python');
-          }
-        }
-      };
-
-      const executeTransformation = async () => {
-        setIsRunning(true);
-        setStatusMsg("EXECUTING VIA FABRIC ROUTER...");
-        const currentCode = monacoEditorRef.current ? monacoEditorRef.current.getValue() : code;
-
-        try {
-          const res = await fetch('/api/v1/transform/execute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              code: currentCode,
-              engine: engine,
-              dataset_name: preset
-            })
-          });
-          const result = await res.json();
-
-          if (result.success) {
-            setColumns(result.columns || []);
-            setRows(result.rows || []);
-            setTelemetry({
-              duration_ms: result.duration_ms || 0,
-              row_count: (result.rows || []).length,
-              memory_mb: result.memory_mb || 0
-            });
-            if (result.capacity_report) {
-              setCapacityReport(result.capacity_report);
-            }
-            if (result.audit_record) {
-              setAuditRecord(result.audit_record);
-            }
-            setStatusMsg(`SUCCESS — ${result.row_count} ROWS IN ${result.duration_ms.toFixed(2)}MS`);
-          } else {
-            setStatusMsg(`EXECUTION FAILED: ${result.error}`);
-          }
-        } catch (e) {
-          setStatusMsg(`ERROR: ${e.message}`);
-        } finally {
-          setIsRunning(false);
-        }
-      };
-
-      const computeColumnStats = async (col, rowData) => {
-        if (!col) return;
-        try {
-          const res = await fetch('/api/v1/analytics/stats', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ column: col, preset: preset })
-          });
-          const data = await res.json();
-          if (data.stats) {
-            setSummaryStats(data.stats);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      };
-
-      // Render Chart.js
-      useEffect(() => {
-        if (activeTab === 'analytics' && chartCanvasRef.current) {
-          renderChart();
-        }
-      }, [activeTab, chartType, xCol, yCol, aggFunc, rows]);
-
-      const renderChart = async () => {
-        if (!chartCanvasRef.current) return;
-        try {
-          const res = await fetch('/api/v1/analytics/aggregate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chart_type: chartType,
-              x_col: xCol,
-              y_col: yCol,
-              agg_func: aggFunc,
-              preset: preset
-            })
-          });
-          const payload = await res.json();
-
-          if (chartInstanceRef.current) {
-            chartInstanceRef.current.destroy();
-          }
-
-          const ctx = chartCanvasRef.current.getContext('2d');
-          const isLine = chartType.toUpperCase() === 'LINE';
-
-          chartInstanceRef.current = new Chart(ctx, {
-            type: isLine ? 'line' : 'bar',
-            data: {
-              labels: payload.labels || [],
-              datasets: [{
-                label: `${aggFunc} OF ${yCol || 'METRIC'}`,
-                data: payload.values || [],
-                borderColor: isLine ? '#3fb950' : '#007acc',
-                backgroundColor: isLine ? 'rgba(35, 134, 54, 0.25)' : 'rgba(0, 122, 204, 0.75)',
-                borderWidth: 2,
-                fill: isLine,
-                tension: 0.35,
-                pointBackgroundColor: '#58a6ff',
-                pointBorderColor: '#ffffff',
-                pointRadius: isLine ? 4 : 0
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              animation: { duration: 300 },
-              plugins: {
-                legend: {
-                  labels: { color: '#cccccc', font: { family: 'DejaVu Sans Mono', size: 11 } }
-                }
-              },
-              scales: {
-                x: {
-                  grid: { color: '#2d2d2d' },
-                  ticks: { color: '#858585', font: { family: 'DejaVu Sans Mono', size: 10 } }
-                },
-                y: {
-                  grid: { color: '#2d2d2d' },
-                  ticks: { color: '#858585', font: { family: 'DejaVu Sans Mono', size: 10 } }
-                }
-              }
-            }
-          });
-        } catch (e) {
-          console.error("Chart error:", e);
-        }
-      };
-
-      const testSqlConnection = async () => {
-        setConnStatus("TESTING SQL ENDPOINT...");
-        try {
-          const res = await fetch('/api/v1/connectors/test-sql', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(sqlConn)
-          });
-          const data = await res.json();
-          if (data.status === 'HEALTHY') {
-            setConnStatus(`CONNECTED [${data.status}]: ${data.message} (${data.latency_ms}ms)`);
-          } else {
-            setConnStatus(`FAILED [${data.status}]: ${data.message}`);
-          }
-        } catch (e) {
-          setConnStatus(`ERROR: ${e.message}`);
-        }
-      };
-
-      const testS3Connection = async () => {
-        setConnStatus("TESTING S3 BUCKET PATH...");
-        try {
-          const res = await fetch('/api/v1/connectors/test-s3', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(s3Conn)
-          });
-          const data = await res.json();
-          if (data.status === 'HEALTHY') {
-            setConnStatus(`S3 VERIFIED [${data.status}]: ${data.message} (${data.latency_ms}ms)`);
-          } else {
-            setConnStatus(`FAILED [${data.status}]: ${data.message}`);
-          }
-        } catch (e) {
-          setConnStatus(`ERROR: ${e.message}`);
-        }
-      };
-
-      const promoteMedallion = async (targetStage) => {
-        setStatusMsg(`PROMOTING TO ${targetStage.toUpperCase()}...`);
-        try {
-          const res = await fetch('/api/v1/medallion/promote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ target_stage: targetStage, dataset_name: preset })
-          });
-          const data = await res.json();
-          setMedallionStage(targetStage);
-          setColumns(data.columns || []);
-          setRows(data.rows || []);
-          setMedallionHistory(prev => [
-            { stage: targetStage.toUpperCase(), timestamp: new Date().toLocaleTimeString(), rows: (data.rows || []).length, desc: data.description || "Stage transition" },
-            ...prev
-          ]);
-          setStatusMsg(`PROMOTED TO ${targetStage.toUpperCase()} (${(data.rows || []).length} ROWS)`);
-        } catch (e) {
-          setStatusMsg(`PROMOTION ERROR: ${e.message}`);
-        }
-      };
-
-      return (
-        <div className="h-screen w-screen flex flex-col bg-vsDark text-[#cccccc] font-mono select-none">
-          
-          {/* Top Activity / Navigation Bar */}
-          <div className="h-10 bg-vsActivity border-b border-vsBorder flex items-center justify-between px-3">
-            <div className="flex items-center space-x-2">
-              <span className="font-bold text-white text-xs tracking-wider border-r border-vsBorder pr-3">OPENFLOW STUDIO</span>
-              
-              <button 
-                onClick={() => setActiveTab("transform")}
-                className={`px-3 py-1 text-xs uppercase flex items-center space-x-1.5 ${activeTab === 'transform' ? 'bg-vsDark text-white border-t-2 border-vsBlue' : 'hover:bg-[#383838] text-gray-400'}`}>
-                <Icons.Layers />
-                <span>TRANSFORM</span>
-              </button>
-
-              <button 
-                onClick={() => setActiveTab("analytics")}
-                className={`px-3 py-1 text-xs uppercase flex items-center space-x-1.5 ${activeTab === 'analytics' ? 'bg-vsDark text-white border-t-2 border-vsBlue' : 'hover:bg-[#383838] text-gray-400'}`}>
-                <Icons.Chart />
-                <span>ANALYTICS</span>
-              </button>
-
-              <button 
-                onClick={() => setActiveTab("medallion")}
-                className={`px-3 py-1 text-xs uppercase flex items-center space-x-1.5 ${activeTab === 'medallion' ? 'bg-vsDark text-white border-t-2 border-vsBlue' : 'hover:bg-[#383838] text-gray-400'}`}>
-                <Icons.Database />
-                <span>LAKEHOUSE</span>
-              </button>
-
-              <button 
-                onClick={() => setActiveTab("connectors")}
-                className={`px-3 py-1 text-xs uppercase flex items-center space-x-1.5 ${activeTab === 'connectors' ? 'bg-vsDark text-white border-t-2 border-vsBlue' : 'hover:bg-[#383838] text-gray-400'}`}>
-                <Icons.Shield />
-                <span>CONNECTORS</span>
-              </button>
-            </div>
-
-            {/* Capacity & ROI Pill */}
-            <div className="flex items-center space-x-3 text-xs">
-              <span className="text-gray-400">TIER: <strong className="text-vsGreen">{capacityReport.tier}</strong></span>
-              <span className="text-gray-400">CU: <strong className="text-vsBlue">{capacityReport.capacity_units.toFixed(2)}</strong></span>
-              <span className="text-gray-400">SAVINGS: <strong className="text-vsGreen">${capacityReport.cost_avoidance_usd.toFixed(2)}</strong></span>
-              
-              <button 
-                onClick={executeTransformation}
-                disabled={isRunning}
-                className="bg-vsGreen hover:bg-vsGreenHover text-white px-3 py-1 text-xs font-bold flex items-center space-x-1">
-                <Icons.Play />
-                <span>{isRunning ? "RUNNING..." : "RUN [F5]"}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Main Content Area */}
-          <div className="flex-1 flex overflow-hidden">
-            
-            {/* Sidebar Controls */}
-            <div className="w-64 bg-vsSidebar border-r border-vsBorder flex flex-col p-3 space-y-4 overflow-y-auto">
-              
-              <div>
-                <label className="text-[10px] text-gray-400 uppercase tracking-widest block mb-1">DATASET PRESET</label>
-                <select 
-                  value={preset} 
-                  onChange={(e) => loadPresetData(e.target.value)}
-                  className="w-full bg-vsDark border border-vsBorder text-xs text-white p-1.5 focus:outline-none focus:border-vsBlue">
-                  {presetsList.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </div>
-
-              {activeTab === 'transform' && (
-                <div>
-                  <label className="text-[10px] text-gray-400 uppercase tracking-widest block mb-1">COMPUTE ENGINE</label>
-                  <div className="grid grid-cols-2 gap-1">
-                    {['pyspark', 'ast_filter', 'sql', 'pandas'].map(eng => (
-                      <button 
-                        key={eng}
-                        onClick={() => handleEngineSwitch(eng)}
-                        className={`p-1.5 text-xs text-center uppercase ${engine === eng ? 'bg-vsBlue text-white font-bold' : 'bg-vsDark hover:bg-[#333333] text-gray-400'}`}>
-                        {eng.replace('_', ' ')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Schema Inspector */}
-              <div className="flex-1 flex flex-col min-h-[150px]">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] text-gray-400 uppercase tracking-widest">SCHEMA COLUMNS</label>
-                  <span className="text-[10px] text-gray-500">{columns.length} COLS</span>
-                </div>
-                <div className="flex-1 bg-vsDark border border-vsBorder p-1 overflow-y-auto text-xs space-y-0.5">
-                  {columns.map(col => (
-                    <div key={col} className="px-2 py-1 flex items-center justify-between text-gray-300 hover:bg-[#2a2a2a]">
-                      <span className="truncate">{col}</span>
-                      <span className="text-[9px] text-gray-500 font-mono">TEXT</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* FinOps Capacity Summary */}
-              <div className="bg-vsDark border border-vsBorder p-2 text-xs space-y-1">
-                <div className="text-[10px] text-gray-400 uppercase font-bold">FINOPS GOVERNOR</div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-400">Engine Route:</span>
-                  <span className="text-white font-mono">{capacityReport.engine_used}</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-400">Capacity Units:</span>
-                  <span className="text-vsBlue font-bold">{capacityReport.capacity_units.toFixed(2)} CU</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-400">Cluster Cost Avoided:</span>
-                  <span className="text-vsGreen font-bold">${capacityReport.cost_avoidance_usd.toFixed(2)}</span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Center / Right Panels */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              
-              {activeTab === 'transform' && (
-                <div className="flex-1 flex flex-col">
-                  {/* Monaco Editor Container */}
-                  <div className="flex-1 border-b border-vsBorder" ref={editorContainerRef}></div>
-
-                  {/* Output Preview Grid */}
-                  <div className="h-64 bg-vsDark flex flex-col">
-                    <div className="h-7 bg-vsTabBar border-b border-vsBorder px-3 flex items-center justify-between text-xs">
-                      <span className="font-bold text-gray-300">EXECUTION OUTPUT PREVIEW ({rows.length} ROWS)</span>
-                      <div className="text-[11px] text-gray-400 space-x-3">
-                        <span>DURATION: <strong className="text-white">{telemetry.duration_ms.toFixed(1)}ms</strong></span>
-                        <span>MEM: <strong className="text-white">{telemetry.memory_mb}MB</strong></span>
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-vsSidebar sticky top-0 border-b border-vsBorder text-gray-400">
-                          <tr>
-                            <th className="p-1.5 border-r border-vsBorder w-10 text-center">#</th>
-                            {columns.map(c => (
-                              <th key={c} className="p-1.5 border-r border-vsBorder font-bold">{c}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-vsBorder font-mono">
-                          {rows.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-[#252526]">
-                              <td className="p-1 border-r border-vsBorder text-center text-gray-600">{idx + 1}</td>
-                              {columns.map(c => (
-                                <td key={c} className="p-1 border-r border-vsBorder text-gray-300 truncate max-w-[200px]">
-                                  {row[c] !== undefined ? String(row[c]) : ''}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'analytics' && (
-                <div className="flex-1 flex flex-col p-4 space-y-4 overflow-y-auto">
-                  {/* Analytics Controls Strip */}
-                  <div className="bg-vsSidebar border border-vsBorder p-3 flex flex-wrap items-center gap-4 text-xs">
-                    <div>
-                      <label className="text-[10px] text-gray-400 uppercase block mb-1">CHART TYPE</label>
-                      <select 
-                        value={chartType} 
-                        onChange={(e) => setChartType(e.target.value)}
-                        className="bg-vsDark border border-vsBorder p-1 text-white">
-                        <option value="LINE">LINE TREND</option>
-                        <option value="BAR">BAR CHART</option>
-                        <option value="HISTOGRAM">HISTOGRAM</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-gray-400 uppercase block mb-1">X AXIS (GROUP)</label>
-                      <select 
-                        value={xCol} 
-                        onChange={(e) => setXCol(e.target.value)}
-                        className="bg-vsDark border border-vsBorder p-1 text-white min-w-[120px]">
-                        {columns.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-gray-400 uppercase block mb-1">Y AXIS (METRIC)</label>
-                      <select 
-                        value={yCol} 
-                        onChange={(e) => {
-                          setYCol(e.target.value);
-                          computeColumnStats(e.target.value, rows);
-                        }}
-                        className="bg-vsDark border border-vsBorder p-1 text-white min-w-[120px]">
-                        {columns.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-gray-400 uppercase block mb-1">AGGREGATION</label>
-                      <select 
-                        value={aggFunc} 
-                        onChange={(e) => setAggFunc(e.target.value)}
-                        className="bg-vsDark border border-vsBorder p-1 text-white">
-                        <option value="SUM">SUM</option>
-                        <option value="AVG">AVERAGE</option>
-                        <option value="COUNT">COUNT</option>
-                        <option value="MIN">MIN</option>
-                        <option value="MAX">MAX</option>
-                        <option value="NONE">NONE (RAW)</option>
-                      </select>
-                    </div>
-
-                    <div className="ml-auto">
-                      <button 
-                        onClick={renderChart}
-                        className="bg-vsBlue hover:bg-vsBlueHover text-white px-3 py-1 font-bold mt-3">
-                        UPDATE CHART
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Summary Metric Pills */}
-                  <div className="grid grid-cols-6 gap-2">
-                    {[
-                      { label: "COUNT", val: summaryStats.count },
-                      { label: "SUM", val: summaryStats.sum.toLocaleString() },
-                      { label: "MEAN", val: summaryStats.mean.toLocaleString() },
-                      { label: "MIN", val: summaryStats.min },
-                      { label: "MAX", val: summaryStats.max },
-                      { label: "STD DEV", val: summaryStats.std }
-                    ].map(st => (
-                      <div key={st.label} className="bg-vsSidebar border border-vsBorder p-2 text-center">
-                        <div className="text-[9px] text-gray-400 uppercase">{st.label}</div>
-                        <div className="text-sm font-bold text-white mt-0.5">{st.val}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Canvas Container */}
-                  <div className="flex-1 min-h-[350px] bg-vsDark border border-vsBorder p-3 relative">
-                    <canvas ref={chartCanvasRef}></canvas>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'medallion' && (
-                <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-                  <div className="border border-vsBorder bg-vsSidebar p-4 space-y-3">
-                    <h2 className="text-sm font-bold text-white uppercase tracking-wider">MEDALLION LAKEHOUSE ARCHITECTURE</h2>
-                    <p className="text-xs text-gray-400 leading-relaxed">
-                      Promote raw ingested data from <strong>Bronze</strong> (unmodified storage) to <strong>Silver</strong> (sanitized, PII pseudonymized, clean) and <strong>Gold</strong> (curated business aggregates and analytics KPIs).
-                    </p>
-
-                    <div className="flex items-center space-x-3 pt-2">
-                      <button 
-                        onClick={() => promoteMedallion('bronze')}
-                        className={`px-4 py-2 text-xs font-bold uppercase border ${medallionStage === 'bronze' ? 'bg-vsBronze text-black border-white' : 'bg-vsDark text-gray-300 border-vsBorder'}`}>
-                        STAGE 1: BRONZE (RAW)
-                      </button>
-                      <button 
-                        onClick={() => promoteMedallion('silver')}
-                        className={`px-4 py-2 text-xs font-bold uppercase border ${medallionStage === 'silver' ? 'bg-vsSilver text-black border-white' : 'bg-vsDark text-gray-300 border-vsBorder'}`}>
-                        STAGE 2: SILVER (MASK PII)
-                      </button>
-                      <button 
-                        onClick={() => promoteMedallion('gold')}
-                        className={`px-4 py-2 text-xs font-bold uppercase border ${medallionStage === 'gold' ? 'bg-vsGold text-black border-white' : 'bg-vsDark text-gray-300 border-vsBorder'}`}>
-                        STAGE 3: GOLD (KPIS)
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Stage Transition History */}
-                  <div className="border border-vsBorder bg-vsDark p-3">
-                    <div className="text-xs font-bold text-gray-300 mb-2 uppercase">LAKEHOUSE AUDIT TRAIL</div>
-                    <div className="space-y-1 text-xs font-mono">
-                      {medallionHistory.map((h, i) => (
-                        <div key={i} className="p-2 bg-vsSidebar border border-vsBorder flex justify-between">
-                          <div>
-                            <strong className="text-white">[{h.stage}]</strong> {h.desc}
-                          </div>
-                          <div className="text-gray-400">
-                            {h.rows} ROWS — {h.timestamp}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'connectors' && (
-                <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* SQL Endpoint Config */}
-                    <div className="border border-vsBorder bg-vsSidebar p-4 space-y-3">
-                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">SQL DATABASE CONNECTOR</h3>
-                      <div className="space-y-2 text-xs">
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-1">TYPE</label>
-                          <select 
-                            value={sqlConn.db_type} 
-                            onChange={(e) => setSqlConn({...sqlConn, db_type: e.target.value})}
-                            className="w-full bg-vsDark border border-vsBorder p-1.5 text-white">
-                            <option value="sqlite">SQLite (Embedded)</option>
-                            <option value="postgresql">PostgreSQL</option>
-                            <option value="mysql">MySQL</option>
-                            <option value="snowflake">Snowflake</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-1">HOST</label>
-                          <input 
-                            type="text" 
-                            value={sqlConn.host} 
-                            onChange={(e) => setSqlConn({...sqlConn, host: e.target.value})}
-                            className="w-full bg-vsDark border border-vsBorder p-1.5 text-white font-mono" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-1">DATABASE</label>
-                          <input 
-                            type="text" 
-                            value={sqlConn.database} 
-                            onChange={(e) => setSqlConn({...sqlConn, database: e.target.value})}
-                            className="w-full bg-vsDark border border-vsBorder p-1.5 text-white font-mono" />
-                        </div>
-                        <button 
-                          onClick={testSqlConnection}
-                          className="w-full bg-vsBlue hover:bg-vsBlueHover text-white p-2 font-bold text-xs uppercase mt-2">
-                          VERIFY SQL CONNECTION
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* S3 Storage Config */}
-                    <div className="border border-vsBorder bg-vsSidebar p-4 space-y-3">
-                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">AWS S3 / OBJECT STORAGE</h3>
-                      <div className="space-y-2 text-xs">
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-1">BUCKET NAME</label>
-                          <input 
-                            type="text" 
-                            value={s3Conn.bucket_name} 
-                            onChange={(e) => setS3Conn({...s3Conn, bucket_name: e.target.value})}
-                            className="w-full bg-vsDark border border-vsBorder p-1.5 text-white font-mono" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-1">PREFIX / FOLDER</label>
-                          <input 
-                            type="text" 
-                            value={s3Conn.prefix} 
-                            onChange={(e) => setS3Conn({...s3Conn, prefix: e.target.value})}
-                            className="w-full bg-vsDark border border-vsBorder p-1.5 text-white font-mono" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-1">REGION</label>
-                          <input 
-                            type="text" 
-                            value={s3Conn.region} 
-                            onChange={(e) => setS3Conn({...s3Conn, region: e.target.value})}
-                            className="w-full bg-vsDark border border-vsBorder p-1.5 text-white font-mono" />
-                        </div>
-                        <button 
-                          onClick={testS3Connection}
-                          className="w-full bg-vsBlue hover:bg-vsBlueHover text-white p-2 font-bold text-xs uppercase mt-2">
-                          VERIFY S3 REACHABILITY
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Status Banner */}
-                  {connStatus && (
-                    <div className="p-3 bg-vsDark border border-vsBorder text-xs font-mono text-white">
-                      {connStatus}
-                    </div>
-                  )}
-
-                  {/* Audit Manifest */}
-                  {auditRecord && (
-                    <div className="p-3 bg-vsDark border border-vsBorder space-y-1">
-                      <div className="text-xs font-bold text-gray-400 uppercase">CRYPTOGRAPHIC SHA-256 AUDIT RECORD</div>
-                      <div className="text-xs text-gray-300 font-mono break-all">HASH: {auditRecord.payload_hash}</div>
-                      <div className="text-[11px] text-gray-500 font-mono">NODE: {auditRecord.node_id} | STAMP: {auditRecord.timestamp}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-            </div>
-          </div>
-
-          {/* Bottom Status Bar */}
-          <div className="h-6 bg-vsBlue text-white text-[11px] flex items-center justify-between px-3 font-mono">
-            <div className="flex items-center space-x-2">
-              <span className="font-bold">[OPENFLOW]</span>
-              <span>{statusMsg}</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span>ACTIVE DATASET: {preset}</span>
-              <span>PORT: 8000</span>
-              <span>UTF-8</span>
-            </div>
-          </div>
-
-        </div>
-      );
+    function updateLineNumbers() {
+      const ta = document.getElementById('code-editor');
+      const lines = ta.value.split('\n').length;
+      let html = '';
+      for (let i = 1; i <= Math.max(lines, 12); i++) {
+        html += i + '<br>';
+      }
+      document.getElementById('line-numbers').innerHTML = html;
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<OpenFlowStudioApp />);
+    document.getElementById('code-editor').addEventListener('input', updateLineNumbers);
+    document.getElementById('code-editor').addEventListener('keydown', function(e) {
+      if (e.key === 'F5' || (e.ctrlKey && e.key === 'Enter')) {
+        e.preventDefault();
+        executeTransformation();
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 4;
+        updateLineNumbers();
+      }
+    });
+
+    function switchTab(tabName) {
+      ['transform', 'analytics', 'medallion', 'connectors'].forEach(t => {
+        document.getElementById('tab-' + t).classList.toggle('active', t === tabName);
+        const p = document.getElementById('panel-' + t);
+        if (p) p.style.display = (t === tabName) ? (t === 'transform' || t === 'analytics' || t === 'medallion' ? 'flex' : 'block') : 'none';
+      });
+      if (tabName === 'analytics') {
+        renderPlot();
+      }
+    }
+
+    function setEngine(eng) {
+      currentEngine = eng;
+      ['pyspark', 'ast_filter', 'sql', 'pandas'].forEach(e => {
+        const b = document.getElementById('eng-' + e);
+        if (b) {
+          b.className = (e === eng) ? 'btn' : 'btn btn-outline';
+        }
+      });
+      const ed = document.getElementById('code-editor');
+      ed.value = STARTERS[eng] || '';
+      updateLineNumbers();
+    }
+
+    async function loadPreset(presetName) {
+      currentPreset = presetName;
+      document.getElementById('footer-msg').innerText = 'LOADING ' + presetName + '...';
+      try {
+        const res = await fetch('/api/v1/presets/load', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ preset: presetName })
+        });
+        const data = await res.json();
+        activeColumns = data.columns || [];
+        activeRows = data.rows || [];
+        renderSchema();
+        renderTable(activeColumns, activeRows);
+        populatePlotDropdowns();
+        document.getElementById('footer-msg').innerText = 'LOADED ' + presetName + ' (' + activeRows.length + ' ROWS)';
+      } catch (e) {
+        document.getElementById('footer-msg').innerText = 'ERROR: ' + e.message;
+      }
+    }
+
+    function renderSchema() {
+      document.getElementById('col-count').innerText = activeColumns.length + ' COLS';
+      const container = document.getElementById('schema-list');
+      container.innerHTML = activeColumns.map(c => 
+        '<div style="padding:2px 4px; display:flex; justify-content:space-between; border-bottom:1px solid #2a2a2a;">' +
+        '<span>' + c + '</span><span style="color:#555;">COL</span></div>'
+      ).join('');
+    }
+
+    function renderTable(cols, rows) {
+      document.getElementById('table-title').innerText = 'EXECUTION OUTPUT PREVIEW (' + rows.length + ' ROWS)';
+      const thead = document.getElementById('data-thead');
+      thead.innerHTML = '<tr><th style="width:30px; text-align:center;">#</th>' + 
+        cols.map(c => '<th>' + c + '</th>').join('') + '</tr>';
+
+      const tbody = document.getElementById('data-tbody');
+      tbody.innerHTML = rows.slice(0, 100).map((r, i) => 
+        '<tr><td style="text-align:center; color:#555;">' + (i + 1) + '</td>' + 
+        cols.map(c => '<td>' + (r[c] !== undefined ? String(r[c]) : '') + '</td>').join('') + '</tr>'
+      ).join('');
+    }
+
+    function populatePlotDropdowns() {
+      const xsel = document.getElementById('plot-xcol');
+      const ysel = document.getElementById('plot-ycol');
+      xsel.innerHTML = activeColumns.map(c => '<option value="' + c + '">' + c + '</option>').join('');
+      ysel.innerHTML = activeColumns.map(c => '<option value="' + c + '">' + c + '</option>').join('');
+      if (activeColumns.length >= 2) {
+        xsel.selectedIndex = 0;
+        ysel.selectedIndex = 1;
+      }
+    }
+
+    async function executeTransformation() {
+      const code = document.getElementById('code-editor').value;
+      document.getElementById('footer-msg').innerText = 'EXECUTING ON ' + currentEngine.toUpperCase() + '...';
+      document.getElementById('status-val').innerText = 'RUNNING';
+      document.getElementById('status-val').style.color = 'var(--accent-blue)';
+
+      try {
+        const res = await fetch('/api/v1/transform/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: code,
+            engine: currentEngine,
+            dataset_name: currentPreset
+          })
+        });
+        const result = await res.json();
+        if (result.success) {
+          activeColumns = result.columns || [];
+          activeRows = result.rows || [];
+          renderTable(activeColumns, activeRows);
+          populatePlotDropdowns();
+
+          document.getElementById('dur-val').innerText = result.duration_ms.toFixed(1) + 'ms';
+          document.getElementById('status-val').innerText = 'SUCCEEDED';
+          document.getElementById('status-val').style.color = 'var(--accent-green)';
+          document.getElementById('footer-msg').innerText = 'SUCCEEDED: ' + result.row_count + ' ROWS IN ' + result.duration_ms.toFixed(1) + 'MS';
+
+          if (result.capacity_report) {
+            document.getElementById('top-tier').innerText = result.capacity_report.tier;
+            document.getElementById('top-cu').innerText = result.capacity_report.capacity_units.toFixed(2);
+            document.getElementById('top-savings').innerText = '$' + result.capacity_report.cost_avoidance_usd.toFixed(2);
+            document.getElementById('finops-route').innerText = result.capacity_report.engine_used;
+            document.getElementById('finops-cu').innerText = result.capacity_report.capacity_units.toFixed(2) + ' CU';
+            document.getElementById('finops-cost').innerText = '$' + result.capacity_report.cost_avoidance_usd.toFixed(2);
+          }
+        } else {
+          document.getElementById('status-val').innerText = 'FAILED';
+          document.getElementById('status-val').style.color = 'var(--danger-red)';
+          document.getElementById('footer-msg').innerText = 'ERROR: ' + result.error;
+        }
+      } catch (e) {
+        document.getElementById('status-val').innerText = 'ERROR';
+        document.getElementById('footer-msg').innerText = 'HTTP ERROR: ' + e.message;
+      }
+    }
+
+    async function renderPlot() {
+      const engine = document.getElementById('plot-engine').value;
+      const chartType = document.getElementById('plot-type').value;
+      const xCol = document.getElementById('plot-xcol').value;
+      const yCol = document.getElementById('plot-ycol').value;
+      const agg = document.getElementById('plot-agg').value;
+
+      document.getElementById('footer-msg').innerText = 'RENDERING ' + engine.toUpperCase() + ' PLOT...';
+
+      try {
+        const res = await fetch('/api/v1/analytics/plot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            engine: engine,
+            chart_type: chartType,
+            x_col: xCol,
+            y_col: yCol,
+            agg_func: agg,
+            preset: currentPreset
+          })
+        });
+        const data = await res.json();
+        const target = document.getElementById('plot-target');
+
+        if (data.format === 'svg') {
+          target.innerHTML = data.content;
+        } else if (data.format === 'html') {
+          target.innerHTML = data.content;
+          // Execute embedded plotly script tags if any
+          const scripts = target.getElementsByTagName('script');
+          for (let s of scripts) {
+            eval(s.innerText);
+          }
+        } else {
+          target.innerHTML = '<pre style="color:#3fb950; font-family:monospace;">' + JSON.stringify(data.content, null, 2) + '</pre>';
+        }
+
+        if (data.stats) {
+          document.getElementById('st-count').innerText = data.stats.count || 0;
+          document.getElementById('st-sum').innerText = (data.stats.sum || 0).toLocaleString();
+          document.getElementById('st-mean').innerText = (data.stats.mean || 0).toLocaleString();
+          document.getElementById('st-min').innerText = data.stats.min || 0;
+          document.getElementById('st-max').innerText = data.stats.max || 0;
+          document.getElementById('st-std').innerText = data.stats.std || 0;
+        }
+        document.getElementById('footer-msg').innerText = 'RENDERED ' + engine.toUpperCase() + ' (' + chartType + ')';
+      } catch (e) {
+        document.getElementById('footer-msg').innerText = 'PLOT ERROR: ' + e.message;
+      }
+    }
+
+    async function promoteMedallion(stage) {
+      document.getElementById('footer-msg').innerText = 'PROMOTING TO ' + stage.toUpperCase() + '...';
+      try {
+        const res = await fetch('/api/v1/medallion/promote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_stage: stage, dataset_name: currentPreset })
+        });
+        const data = await res.json();
+        activeColumns = data.columns || [];
+        activeRows = data.rows || [];
+        renderTable(activeColumns, activeRows);
+        populatePlotDropdowns();
+
+        const hist = document.getElementById('medallion-history');
+        const entry = document.createElement('div');
+        entry.style.cssText = 'padding:6px; background:var(--bg-sidebar); border:1px solid var(--border-color);';
+        entry.innerHTML = '<strong>[' + stage.toUpperCase() + ']</strong> ' + (data.description || '') + ' (' + activeRows.length + ' rows)';
+        hist.prepend(entry);
+
+        document.getElementById('footer-msg').innerText = 'PROMOTED TO ' + stage.toUpperCase() + ' (' + activeRows.length + ' ROWS)';
+      } catch (e) {
+        document.getElementById('footer-msg').innerText = 'PROMOTION ERROR: ' + e.message;
+      }
+    }
+
+    async function testSqlEndpoint() {
+      const box = document.getElementById('conn-result');
+      box.style.display = 'block';
+      box.innerText = 'TESTING SQL CONNECTION...';
+      try {
+        const res = await fetch('/api/v1/connectors/test-sql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            db_type: document.getElementById('sql-engine').value,
+            host: document.getElementById('sql-host').value,
+            database: document.getElementById('sql-db').value
+          })
+        });
+        const data = await res.json();
+        box.innerText = 'STATUS [' + data.status + ']: ' + data.message + ' (' + data.latency_ms + 'ms)';
+      } catch (e) {
+        box.innerText = 'ERROR: ' + e.message;
+      }
+    }
+
+    async function testS3Endpoint() {
+      const box = document.getElementById('conn-result');
+      box.style.display = 'block';
+      box.innerText = 'TESTING S3 REACHABILITY...';
+      try {
+        const res = await fetch('/api/v1/connectors/test-s3', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bucket_name: document.getElementById('s3-bucket').value,
+            prefix: document.getElementById('s3-prefix').value,
+            region: document.getElementById('s3-region').value
+          })
+        });
+        const data = await res.json();
+        box.innerText = 'STATUS [' + data.status + ']: ' + data.message + ' (' + data.latency_ms + 'ms)';
+      } catch (e) {
+        box.innerText = 'ERROR: ' + e.message;
+      }
+    }
+
+    // Initialize
+    setEngine('pyspark');
+    loadPreset('ECOMMERCE_SALES');
   </script>
 </body>
 </html>

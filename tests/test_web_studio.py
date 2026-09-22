@@ -21,9 +21,13 @@ from openflow_api.deps import TenantContext
 
 def test_serve_web_studio_html() -> None:
     res = serve_ui()
-    assert "OpenFlow ELT Platform" in res.content
-    assert "monaco-editor" in res.content
-    assert "chart.js" in res.content
+    assert "OpenFlow" in res.content
+    assert "code-editor" in res.content
+    assert "plot-target" in res.content
+    # Strict all-local rule: ensure zero external CDN dependencies
+    assert "https://" not in res.content
+    assert "monaco-editor" not in res.content
+    assert "chart.js" not in res.content
 
 
 def test_api_transform_execute_with_capacity_and_audit() -> None:

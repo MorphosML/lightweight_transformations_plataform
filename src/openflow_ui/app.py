@@ -232,6 +232,30 @@ class OpenFlowUIRequestHandler(BaseHTTPRequestHandler):
             })
             return
 
+        if path == "/api/v1/analytics/plot":
+            engine = body.get("engine", "plotly")
+            chart_type = body.get("chart_type", "LINE")
+            x_col = body.get("x_col", "")
+            y_col = body.get("y_col", "")
+            agg_func = body.get("agg_func", "SUM")
+            preset = body.get("preset", "ECOMMERCE_SALES")
+
+            df = self.active_dfs.get(f"{preset}_output", self.active_dfs.get(preset))
+            if df is None:
+                _, df = generate_dataset(preset)
+                self.active_dfs[preset] = df
+
+            plot_result = AnalyticsEngine.plot_dataset(
+                df=df,
+                engine=engine,
+                chart_type=chart_type,
+                x_col=x_col,
+                y_col=y_col,
+                agg_func=agg_func,
+            )
+            self._send_json(200, plot_result)
+            return
+
         if path == "/api/v1/medallion/promote":
             target_stage = body.get("target_stage", "silver").lower()
             preset = body.get("dataset_name", "ECOMMERCE_SALES")
@@ -502,17 +526,60 @@ df_out = df[df['amount'] > 50.0].groupby(['country', 'category']).agg(
 }
 
 
+class OpenFlowNativeWindow:
+    """Authentic Linux desktop application window running GTK3 and WebKit2GTK."""
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+        self.window: Any = None
+        self.webview: Any = None
+
+    def launch(self) -> None:
+        """Launches the native GTK3 + WebKit2 window."""
+        try:
+            import gi
+            gi.require_version("Gtk", "3.0")
+            gi.require_version("WebKit2", "4.1")
+            from gi.repository import Gtk, WebKit2
+
+            self.window = Gtk.Window(title="OpenFlow Fabric Studio — Desktop Edition")
+            self.window.set_default_size(1280, 820)
+            self.window.set_position(Gtk.WindowPosition.CENTER)
+
+            self.webview = WebKit2.WebView()
+            self.webview.load_uri(self.url)
+            self.window.add(self.webview)
+
+            self.window.connect("destroy", lambda w: Gtk.main_quit())
+            self.window.show_all()
+            Gtk.main()
+        except Exception as exc:
+            print(f"[OpenFlow] Native window fallback to browser: {exc}")
+            webbrowser.open(self.url)
+
+
 def main() -> None:
     server = OpenFlowUIServer(port=8000)
     bound_port = server.start(daemon=True)
     url = f"http://127.0.0.1:{bound_port}"
 
     print("=" * 64)
-    print(" OPENFLOW STUDIO — MODERN REACT WEB DESKTOP")
-    print(" React 18, Monaco Editor (VS Code), Chart.js Vector Analytics")
-    print(f" Studio URL: {url}")
+    print(" OPENFLOW FABRIC STUDIO — LOCAL DESKTOP EDITION")
+    print(" 100% Offline | Native GTK3 WebKit2 Window | Plotly & Seaborn")
+    print(f" Local URL: {url}")
     print("=" * 64)
 
+    has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    if has_display and "--no-window" not in sys.argv:
+        try:
+            native_win = OpenFlowNativeWindow(url)
+            native_win.launch()
+            server.stop()
+            return
+        except Exception as e:
+            print(f"[OpenFlow] Desktop window error: {e}")
+
+    # Fallback for headless / browser mode
     def _open() -> None:
         time.sleep(0.8)
         webbrowser.open(url)

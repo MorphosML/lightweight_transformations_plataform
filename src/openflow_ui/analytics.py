@@ -1,7 +1,19 @@
 from __future__ import annotations
 
+import io
+import os
 from typing import Any, Literal
 import pandas as pd
+
+# Set safe writable directory for matplotlib cache
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib_openflow")
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import plotly.io as pio
 
 VS_CANVAS_BG = "#1e1e1e"
 VS_GRID_COLOR = "#2d2d2d"
@@ -15,7 +27,7 @@ VS_TITLE_COLOR = "#ffffff"
 
 
 class AnalyticsEngine:
-    """Pure computational engine for descriptive statistics and aggregated vector charting."""
+    """Enterprise visual analytics engine integrating Plotly, Seaborn, and Matplotlib."""
 
     @classmethod
     def compute_summary_stats(cls, df: pd.DataFrame, column: str) -> dict[str, float]:
@@ -73,7 +85,6 @@ class AnalyticsEngine:
         else:
             grouped = clean_df.groupby(x_col)[y_col].agg(func).reset_index()
 
-        # Sort descending and limit
         grouped = grouped.sort_values(by=y_col, ascending=False).head(max_categories)
         labels = [str(x) for x in grouped[x_col]]
         values = [round(float(y), 2) for y in grouped[y_col]]
@@ -113,6 +124,205 @@ class AnalyticsEngine:
             bin_counts[b_idx] += 1
 
         return bin_labels, [float(c) for c in bin_counts]
+
+    @classmethod
+    def generate_plotly_figure(
+        cls,
+        df: pd.DataFrame,
+        x_col: str,
+        y_col: str,
+        chart_type: str = "LINE",
+        agg_func: str = "SUM",
+    ) -> str:
+        """Generates an interactive Plotly dark-themed plot rendered to an HTML snippet."""
+        if df.empty or x_col not in df.columns:
+            return "<div style='color:#858585;padding:20px;'>No data available for Plotly rendering.</div>"
+
+        ctype = chart_type.upper()
+        title = f"{ctype} — {agg_func} of {y_col} by {x_col}" if y_col else f"{ctype} of {x_col}"
+
+        if ctype == "HISTOGRAM":
+            fig = px.histogram(
+                df, x=y_col or x_col, nbins=20,
+                title=title, template="plotly_dark",
+                color_discrete_sequence=["#007acc"]
+            )
+        elif ctype == "BAR":
+            labels, values = cls.aggregate_data(df, x_col, y_col, agg_func=agg_func)
+            agg_df = pd.DataFrame({x_col: labels, y_col: values})
+            fig = px.bar(
+                agg_df, x=x_col, y=y_col,
+                title=title, template="plotly_dark",
+                color_discrete_sequence=["#007acc"]
+            )
+        elif ctype == "SCATTER":
+            fig = px.scatter(
+                df, x=x_col, y=y_col,
+                title=title, template="plotly_dark",
+                color_discrete_sequence=["#3fb950"]
+            )
+        elif ctype == "BOX":
+            fig = px.box(
+                df, x=x_col, y=y_col,
+                title=title, template="plotly_dark",
+                color_discrete_sequence=["#d29922"]
+            )
+        else:  # LINE
+            labels, values = cls.aggregate_data(df, x_col, y_col, agg_func=agg_func)
+            agg_df = pd.DataFrame({x_col: labels, y_col: values})
+            fig = px.line(
+                agg_df, x=x_col, y=y_col,
+                title=title, template="plotly_dark",
+                markers=True, color_discrete_sequence=["#3fb950"]
+            )
+
+        fig.update_layout(
+            paper_bgcolor="#1e1e1e",
+            plot_bgcolor="#1e1e1e",
+            font=dict(color="#cccccc", family="monospace"),
+            margin=dict(l=40, r=40, t=50, b=40),
+        )
+        return pio.to_html(fig, include_plotlyjs="cdn", full_html=False)
+
+    @classmethod
+    def generate_seaborn_figure(
+        cls,
+        df: pd.DataFrame,
+        x_col: str,
+        y_col: str,
+        chart_type: str = "BAR",
+        agg_func: str = "SUM",
+    ) -> str:
+        """Generates a publication-grade statistical Seaborn plot rendered as crisp vector SVG."""
+        if df.empty or x_col not in df.columns:
+            return "<svg><text fill='#858585'>No data</text></svg>"
+
+        plt.close("all")
+        sns.set_theme(
+            style="darkgrid",
+            rc={
+                "axes.facecolor": "#1e1e1e",
+                "figure.facecolor": "#1e1e1e",
+                "text.color": "#cccccc",
+                "axes.labelcolor": "#cccccc",
+                "xtick.color": "#858585",
+                "ytick.color": "#858585",
+                "grid.color": "#2d2d2d",
+            },
+        )
+
+        fig, ax = plt.subplots(figsize=(8.5, 4.2))
+        ctype = chart_type.upper()
+
+        if ctype == "HISTOGRAM":
+            col_to_plot = y_col if (y_col in df.columns and pd.api.types.is_numeric_dtype(df[y_col])) else x_col
+            sns.histplot(data=df, x=col_to_plot, kde=True, ax=ax, color="#007acc")
+            ax.set_title(f"SEABORN HISTOGRAM & KDE — {col_to_plot}", color="#ffffff", fontsize=11, fontweight="bold")
+        elif ctype == "BOX":
+            sns.boxplot(data=df, x=x_col, y=y_col, ax=ax, palette="mako")
+            ax.set_title(f"SEABORN BOXPLOT — {y_col} BY {x_col}", color="#ffffff", fontsize=11, fontweight="bold")
+            plt.xticks(rotation=30, ha="right")
+        elif ctype == "SCATTER":
+            sns.scatterplot(data=df, x=x_col, y=y_col, ax=ax, color="#3fb950", s=60)
+            ax.set_title(f"SEABORN SCATTER — {y_col} VS {x_col}", color="#ffffff", fontsize=11, fontweight="bold")
+        elif ctype == "LINE":
+            labels, values = cls.aggregate_data(df, x_col, y_col, agg_func=agg_func)
+            ax.plot(labels, values, marker="o", color="#3fb950", linewidth=2.5, markersize=5)
+            ax.fill_between(range(len(labels)), values, color="#122a18", alpha=0.6)
+            ax.set_title(f"SEABORN LINE TREND — {agg_func} OF {y_col}", color="#ffffff", fontsize=11, fontweight="bold")
+            plt.xticks(rotation=30, ha="right")
+        else:  # BAR
+            labels, values = cls.aggregate_data(df, x_col, y_col, agg_func=agg_func)
+            sns.barplot(x=labels, y=values, ax=ax, hue=labels, palette="crest", legend=False)
+            ax.set_title(f"SEABORN BAR — {agg_func} OF {y_col} BY {x_col}", color="#ffffff", fontsize=11, fontweight="bold")
+            plt.xticks(rotation=30, ha="right")
+
+        fig.tight_layout()
+        buf = io.StringIO()
+        fig.savefig(buf, format="svg", transparent=True)
+        plt.close(fig)
+        return buf.getvalue()
+
+    @classmethod
+    def generate_matplotlib_figure(
+        cls,
+        df: pd.DataFrame,
+        x_col: str,
+        y_col: str,
+        chart_type: str = "BAR",
+        agg_func: str = "SUM",
+    ) -> str:
+        """Generates a dark industrial Matplotlib figure rendered as crisp vector SVG."""
+        if df.empty or x_col not in df.columns:
+            return "<svg><text fill='#858585'>No data</text></svg>"
+
+        plt.close("all")
+        fig, ax = plt.subplots(figsize=(8.5, 4.2))
+        fig.patch.set_facecolor("#1e1e1e")
+        ax.set_facecolor("#1e1e1e")
+        ax.tick_params(colors="#858585")
+        ax.grid(True, color="#2d2d2d", linestyle="--", alpha=0.7)
+        for spine in ax.spines.values():
+            spine.set_color("#444444")
+
+        ctype = chart_type.upper()
+        if ctype == "HISTOGRAM":
+            col_to_plot = y_col if (y_col in df.columns and pd.api.types.is_numeric_dtype(df[y_col])) else x_col
+            ax.hist(df[col_to_plot].dropna(), bins=15, color="#007acc", edgecolor="#005999")
+            ax.set_title(f"MATPLOTLIB DISTRIBUTION — {col_to_plot}", color="#ffffff", fontsize=11, fontweight="bold")
+        elif ctype == "LINE":
+            labels, values = cls.aggregate_data(df, x_col, y_col, agg_func=agg_func)
+            ax.plot(labels, values, color="#3fb950", marker="o", linewidth=2)
+            ax.fill_between(range(len(labels)), values, color="#122a18", alpha=0.5)
+            ax.set_title(f"MATPLOTLIB TREND — {agg_func} OF {y_col}", color="#ffffff", fontsize=11, fontweight="bold")
+            plt.xticks(rotation=30, ha="right")
+        else:  # BAR
+            labels, values = cls.aggregate_data(df, x_col, y_col, agg_func=agg_func)
+            bars = ax.bar(labels, values, color="#007acc", edgecolor="#58a6ff")
+            ax.set_title(f"MATPLOTLIB BAR — {agg_func} OF {y_col} BY {x_col}", color="#ffffff", fontsize=11, fontweight="bold")
+            plt.xticks(rotation=30, ha="right")
+
+        fig.tight_layout()
+        buf = io.StringIO()
+        fig.savefig(buf, format="svg", transparent=True)
+        plt.close(fig)
+        return buf.getvalue()
+
+    @classmethod
+    def plot_dataset(
+        cls,
+        df: pd.DataFrame,
+        engine: str = "plotly",
+        chart_type: str = "BAR",
+        x_col: str = "",
+        y_col: str = "",
+        agg_func: str = "SUM",
+    ) -> dict[str, Any]:
+        """Unified dispatch method for all plotting backends."""
+        engine_norm = engine.lower().strip()
+        stats = cls.compute_summary_stats(df, y_col or x_col)
+
+        if engine_norm in ("plotly", "plotpy"):
+            content = cls.generate_plotly_figure(df, x_col, y_col, chart_type, agg_func)
+            format_type = "html"
+        elif engine_norm == "seaborn":
+            content = cls.generate_seaborn_figure(df, x_col, y_col, chart_type, agg_func)
+            format_type = "svg"
+        elif engine_norm in ("matplotlib", "mattplot"):
+            content = cls.generate_matplotlib_figure(df, x_col, y_col, chart_type, agg_func)
+            format_type = "svg"
+        else:
+            labels, values = cls.aggregate_data(df, x_col, y_col, agg_func=agg_func)
+            content = cls.to_chartjs_payload(chart_type, labels, values)
+            format_type = "json"
+
+        return {
+            "engine": engine_norm,
+            "chart_type": chart_type,
+            "format": format_type,
+            "content": content,
+            "stats": stats,
+        }
 
     @classmethod
     def to_chartjs_payload(

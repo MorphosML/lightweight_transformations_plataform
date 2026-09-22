@@ -12,8 +12,9 @@ from openflow_api.deps import TenantContext
 
 def test_serve_ui_returns_html() -> None:
     res = serve_ui()
-    assert "OpenFlow ELT Platform" in res.content
-    assert "monaco-editor" in res.content
+    assert "OpenFlow" in res.content
+    assert "code-editor" in res.content
+    assert "https://" not in res.content
 
 
 def test_load_preset_and_execute_transform() -> None:
