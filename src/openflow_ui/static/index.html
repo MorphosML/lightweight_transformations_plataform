@@ -104,30 +104,109 @@
       border-top: 2px solid var(--accent-blue);
     }
     .btn {
-      background: var(--accent-blue);
-      color: var(--text-bright);
-      border: none;
-      padding: 6px 12px;
+      background: linear-gradient(180deg, #0969da 0%, #044289 100%);
+      color: #ffffff;
+      border: 1px solid #1f6feb;
+      padding: 7px 14px;
       font-size: 11px;
-      font-weight: bold;
+      font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      transition: all 0.15s ease-in-out;
+      user-select: none;
     }
-    .btn:hover { background: var(--accent-blue-hover); }
-    .btn-green { background: var(--accent-green); }
-    .btn-green:hover { background: var(--accent-green-hover); }
+    .btn:hover {
+      background: linear-gradient(180deg, #1f6feb 0%, #0969da 100%);
+      border-color: #58a6ff;
+      box-shadow: 0 0 12px rgba(56, 139, 253, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    .btn:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+    .btn-green {
+      background: linear-gradient(180deg, #238636 0%, #196c2e 100%);
+      border: 1px solid #2ea043;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 0 14px rgba(35, 134, 54, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-green:hover {
+      background: linear-gradient(180deg, #2ea043 0%, #238636 100%);
+      border-color: #3fb950;
+      box-shadow: 0 0 18px rgba(46, 160, 67, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
     .btn-outline {
-      background: transparent;
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
+      background: #21262d;
+      border: 1px solid #363b42;
+      color: #c9d1d9;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
     .btn-outline:hover {
-      background: #333333;
-      color: var(--text-bright);
+      background: #30363d;
+      border-color: #58a6ff;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(88, 166, 255, 0.35);
+    }
+    .btn-strong-blue {
+      background: linear-gradient(180deg, #1f6feb 0%, #1158c7 100%);
+      border: 1px solid #388bfd;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(31, 111, 235, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-strong-blue:hover {
+      background: linear-gradient(180deg, #388bfd 0%, #1f6feb 100%);
+      box-shadow: 0 0 18px rgba(56, 139, 253, 0.65);
+    }
+    .btn-strong-purple {
+      background: linear-gradient(180deg, #8957e5 0%, #6e40c9 100%);
+      border: 1px solid #a371f7;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(137, 87, 229, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-strong-purple:hover {
+      background: linear-gradient(180deg, #a371f7 0%, #8957e5 100%);
+      box-shadow: 0 0 18px rgba(163, 113, 247, 0.65);
+    }
+    .btn-medallion-bronze {
+      background: linear-gradient(180deg, rgba(188, 140, 84, 0.28) 0%, rgba(188, 140, 84, 0.12) 100%);
+      border: 1px solid #d49b55;
+      color: #f0c68a;
+      box-shadow: 0 0 12px rgba(212, 155, 85, 0.35);
+    }
+    .btn-medallion-bronze:hover {
+      background: linear-gradient(180deg, rgba(212, 155, 85, 0.45) 0%, rgba(188, 140, 84, 0.22) 100%);
+      border-color: #f0c68a;
+      box-shadow: 0 0 18px rgba(212, 155, 85, 0.6);
+      color: #ffffff;
+    }
+    .btn-medallion-silver {
+      background: linear-gradient(180deg, #0969da 0%, #053b7a 100%);
+      border: 1px solid #58a6ff;
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(56, 139, 253, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    .btn-medallion-silver:hover {
+      background: linear-gradient(180deg, #1f6feb 0%, #0969da 100%);
+      border-color: #79c0ff;
+      box-shadow: 0 0 20px rgba(88, 166, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      color: #ffffff;
+    }
+    .btn-medallion-gold {
+      background: linear-gradient(180deg, rgba(210, 153, 34, 0.32) 0%, rgba(210, 153, 34, 0.14) 100%);
+      border: 1px solid #e3b341;
+      color: #f2cc60;
+      box-shadow: 0 0 12px rgba(227, 179, 65, 0.35);
+    }
+    .btn-medallion-gold:hover {
+      background: linear-gradient(180deg, rgba(227, 179, 65, 0.5) 0%, rgba(210, 153, 34, 0.28) 100%);
+      border-color: #f2cc60;
+      box-shadow: 0 0 18px rgba(227, 179, 65, 0.65);
+      color: #ffffff;
     }
     .input, .select {
       width: 100%;
@@ -424,7 +503,7 @@
           </div>
 
           <div>
-            <button class="btn" onclick="renderPlot()">RENDER PLOT</button>
+            <button class="btn btn-strong-blue" onclick="renderPlot()">RENDER PLOT</button>
           </div>
         </div>
 
@@ -452,9 +531,9 @@
             Stage raw ingest payloads into <strong>Bronze</strong>, cleanse and pseudonymize sensitive PII into <strong>Silver</strong>, and generate curated business KPI tables into <strong>Gold</strong>.
           </p>
           <div style="display:flex; gap:12px;">
-            <button class="btn btn-outline" onclick="promoteMedallion('bronze')" style="border-color:#bc8c54; color:#bc8c54;">STAGE 1: BRONZE (RAW)</button>
-            <button class="btn btn-outline" onclick="promoteMedallion('silver')" style="border-color:#8b949e; color:#8b949e;">STAGE 2: SILVER (MASK PII)</button>
-            <button class="btn btn-outline" onclick="promoteMedallion('gold')" style="border-color:#d29922; color:#d29922;">STAGE 3: GOLD (KPIS)</button>
+            <button class="btn btn-medallion-bronze" onclick="promoteMedallion('bronze')">STAGE 1: BRONZE (RAW)</button>
+            <button class="btn btn-medallion-silver" onclick="promoteMedallion('silver')">STAGE 2: SILVER (MASK PII)</button>
+            <button class="btn btn-medallion-gold" onclick="promoteMedallion('gold')">STAGE 3: GOLD (KPIS)</button>
           </div>
         </div>
 
@@ -491,7 +570,7 @@
               <label class="label">DATABASE</label>
               <input class="input" id="sql-db" value=":memory:" />
             </div>
-            <button class="btn" onclick="testSqlEndpoint()">VERIFY SQL CONNECTION</button>
+            <button class="btn btn-strong-blue" onclick="testSqlEndpoint()">VERIFY SQL CONNECTION</button>
           </div>
 
           <div style="background:var(--bg-sidebar); border:1px solid var(--border-color); padding:14px; display:flex; flex-direction:column; gap:10px;">
@@ -508,7 +587,7 @@
               <label class="label">REGION</label>
               <input class="input" id="s3-region" value="us-east-1" />
             </div>
-            <button class="btn" onclick="testS3Endpoint()">VERIFY S3 REACHABILITY</button>
+            <button class="btn btn-strong-purple" onclick="testS3Endpoint()">VERIFY S3 REACHABILITY</button>
           </div>
 
         </div>
@@ -614,7 +693,7 @@ df_out = df[df['amount'] > 50.0].groupby(['country', 'category']).agg(
       ['pyspark', 'ast_filter', 'sql', 'pandas'].forEach(e => {
         const b = document.getElementById('eng-' + e);
         if (b) {
-          b.className = (e === eng) ? 'btn' : 'btn btn-outline';
+          b.className = (e === eng) ? 'btn btn-strong-blue' : 'btn btn-outline';
         }
       });
       const ed = document.getElementById('code-editor');
