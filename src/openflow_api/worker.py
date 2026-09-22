@@ -131,3 +131,4 @@ def execute_pipeline_task(
 
     finally:
         session.close()
+
