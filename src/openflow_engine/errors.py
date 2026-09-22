@@ -12,3 +12,11 @@ class PipelineExecutionError(RuntimeError):
     def __init__(self, message: str, logs: list[object] | None = None) -> None:
         super().__init__(message)
         self.logs = logs or []
+
+
+class SecurityError(PermissionError):
+    """Raised when a security validation or access constraint fails."""
+
+
+class ConnectorError(RuntimeError):
+    """Raised when a database or storage connector fails to connect or execute."""
