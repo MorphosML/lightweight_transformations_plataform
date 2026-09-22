@@ -17,6 +17,9 @@ from openflow_engine.cloud_connectors import (
     SQLDatabaseConnector,
 )
 from openflow_engine.errors import ConnectorError, SecurityError
+from openflow_engine.fabric_capacity import CapacityMeter, ComputeTier
+from openflow_engine.governance import AuditLineage, PIIMasker, SecretMasker
+from openflow_engine.medallion import MedallionCatalog, MedallionStage
 from openflow_engine.security import SQLSanitizer, SSRFGuard
 
 # Authentic VS Code Dark+ Color Palette
@@ -95,6 +98,12 @@ class OpenFlowLocalApp:
         # Cloud Connectors
         self.sql_config = SQLDatabaseConfig(engine_type="sqlite", database=":memory:")
         self.s3_config = S3BucketConfig(bucket_name="openflow-lakehouse", region="us-east-1")
+
+        # Fabric & Governance State
+        self.medallion_catalog = MedallionCatalog()
+        self.cumulative_cu: float = 0.0
+        self.cumulative_savings_usd: float = 0.0
+        self.last_audit_sig: str = ""
 
         self._setup_theme()
         self._build_vscode_layout()
@@ -197,6 +206,9 @@ class OpenFlowLocalApp:
         self.btn_act_connectors = make_act_btn("[CONNS]", lambda: self.switch_sidebar("connectors"), active=False)
         self.btn_act_connectors.pack(fill="x", side="top", pady=2)
 
+        self.btn_act_fabric = make_act_btn("[FABRIC]", lambda: self.switch_sidebar("fabric"), active=False)
+        self.btn_act_fabric.pack(fill="x", side="top", pady=2)
+
         btn_act_run = make_act_btn("[RUN]", self.run_transformation, active=False)
         btn_act_run.pack(fill="x", side="top", pady=2)
 
@@ -226,16 +238,22 @@ class OpenFlowLocalApp:
         for widget in self.sidebar_content.winfo_children():
             widget.destroy()
 
+        self.btn_act_explorer.configure(fg=VS_TEXT_MAIN)
+        self.btn_act_connectors.configure(fg=VS_TEXT_MAIN)
+        self.btn_act_fabric.configure(fg=VS_TEXT_MAIN)
+
         if view_name == "explorer":
             self.btn_act_explorer.configure(fg=VS_TEXT_BRIGHT)
-            self.btn_act_connectors.configure(fg=VS_TEXT_MAIN)
             self.sidebar_title_lbl.configure(text="EXPLORER: OPENFLOW")
             self._render_explorer_view()
-        else:
-            self.btn_act_explorer.configure(fg=VS_TEXT_MAIN)
+        elif view_name == "connectors":
             self.btn_act_connectors.configure(fg=VS_TEXT_BRIGHT)
             self.sidebar_title_lbl.configure(text="CONNECTORS: CLOUD & DB")
             self._render_connectors_view()
+        else:
+            self.btn_act_fabric.configure(fg=VS_TEXT_BRIGHT)
+            self.sidebar_title_lbl.configure(text="DATA FABRIC & FINOPS")
+            self._render_fabric_view()
 
     def _render_explorer_view(self) -> None:
         parent = self.sidebar_content
@@ -382,6 +400,116 @@ class OpenFlowLocalApp:
             highlightbackground=VS_BORDER,
         )
         sec_box.pack(fill="x", padx=12, pady=10)
+
+    def _render_fabric_view(self) -> None:
+        parent = self.sidebar_content
+
+        # Section 1: FinOps Capacity Governor
+        sec_finops = tk.Label(parent, text="v FINOPS CAPACITY GOVERNOR", bg=VS_SIDEBAR_BG, fg=VS_TEXT_BRIGHT, font=("DejaVu Sans Mono", 8, "bold"), anchor="w")
+        sec_finops.pack(fill="x", padx=10, pady=(6, 2))
+
+        finops_box = tk.Frame(parent, bg=VS_EDITOR_BG, highlightthickness=1, highlightbackground=VS_BORDER, padx=8, pady=6)
+        finops_box.pack(fill="x", padx=12, pady=(0, 10))
+
+        tier_text = "CURRENT TIER: TIER 0 (EMBEDDED)" if self.current_engine != "pyspark" else "CURRENT TIER: TIER 1 (SPARK)"
+        self.lbl_fabric_tier = tk.Label(finops_box, text=tier_text, bg=VS_EDITOR_BG, fg=VS_KEYWORD_BLUE, font=("DejaVu Sans Mono", 8, "bold"), anchor="w")
+        self.lbl_fabric_tier.pack(fill="x")
+
+        self.lbl_fabric_cu = tk.Label(
+            finops_box,
+            text=f"CAPACITY UNITS: {self.cumulative_cu:.4f} CU",
+            bg=VS_EDITOR_BG,
+            fg=VS_TEXT_MAIN,
+            font=("DejaVu Sans Mono", 8),
+            anchor="w",
+        )
+        self.lbl_fabric_cu.pack(fill="x", pady=2)
+
+        self.lbl_fabric_savings = tk.Label(
+            finops_box,
+            text=f"FINOPS SAVINGS: ${self.cumulative_savings_usd:.4f}",
+            bg=VS_EDITOR_BG,
+            fg=VS_RUN_GREEN,
+            font=("DejaVu Sans Mono", 8, "bold"),
+            anchor="w",
+        )
+        self.lbl_fabric_savings.pack(fill="x")
+
+        # Section 2: Medallion Lakehouse Catalog
+        sec_med = tk.Label(parent, text="v MEDALLION LAKEHOUSE", bg=VS_SIDEBAR_BG, fg=VS_TEXT_BRIGHT, font=("DejaVu Sans Mono", 8, "bold"), anchor="w")
+        sec_med.pack(fill="x", padx=10, pady=(4, 2))
+
+        med_box = tk.Frame(parent, bg=VS_EDITOR_BG, highlightthickness=1, highlightbackground=VS_BORDER, padx=8, pady=6)
+        med_box.pack(fill="x", padx=12, pady=(0, 6))
+
+        bronze_cnt = len(self.medallion_catalog.list_tables(MedallionStage.BRONZE))
+        silver_cnt = len(self.medallion_catalog.list_tables(MedallionStage.SILVER))
+        gold_cnt = len(self.medallion_catalog.list_tables(MedallionStage.GOLD))
+
+        self.lbl_med_bronze = tk.Label(med_box, text=f"BRONZE (RAW): {bronze_cnt} tables", bg=VS_EDITOR_BG, fg=VS_TEXT_MAIN, font=("DejaVu Sans Mono", 8), anchor="w")
+        self.lbl_med_bronze.pack(fill="x")
+
+        self.lbl_med_silver = tk.Label(med_box, text=f"SILVER (CLEANSED): {silver_cnt} tables", bg=VS_EDITOR_BG, fg=VS_TEXT_MAIN, font=("DejaVu Sans Mono", 8), anchor="w")
+        self.lbl_med_silver.pack(fill="x")
+
+        self.lbl_med_gold = tk.Label(med_box, text=f"GOLD (AGGREGATED): {gold_cnt} tables", bg=VS_EDITOR_BG, fg=VS_TEXT_MAIN, font=("DejaVu Sans Mono", 8), anchor="w")
+        self.lbl_med_gold.pack(fill="x")
+
+        # Action Buttons
+        btn_bronze = tk.Button(parent, text="+ REGISTER BRONZE (RAW)", command=self._action_register_bronze, bg=VS_TAB_BAR, fg=VS_TEXT_MAIN, activebackground=VS_ACTIVITY_BAR, activeforeground=VS_TEXT_BRIGHT, relief="flat", bd=0, padx=6, pady=3, font=("DejaVu Sans Mono", 8))
+        btn_bronze.pack(fill="x", padx=12, pady=2)
+
+        btn_silver = tk.Button(parent, text="+ PROMOTE TO SILVER (MASK PII)", command=self._action_promote_silver, bg=VS_TAB_BAR, fg=VS_TEXT_MAIN, activebackground=VS_ACTIVITY_BAR, activeforeground=VS_TEXT_BRIGHT, relief="flat", bd=0, padx=6, pady=3, font=("DejaVu Sans Mono", 8))
+        btn_silver.pack(fill="x", padx=12, pady=2)
+
+        btn_gold = tk.Button(parent, text="+ PROMOTE TO GOLD (AGGREGATE)", command=self._action_promote_gold, bg=VS_TAB_BAR, fg=VS_TEXT_MAIN, activebackground=VS_ACTIVITY_BAR, activeforeground=VS_TEXT_BRIGHT, relief="flat", bd=0, padx=6, pady=3, font=("DejaVu Sans Mono", 8))
+        btn_gold.pack(fill="x", padx=12, pady=(2, 10))
+
+        # Section 3: Audit & Governance
+        sec_gov = tk.Label(parent, text="v AUDIT & GOVERNANCE", bg=VS_SIDEBAR_BG, fg=VS_TEXT_BRIGHT, font=("DejaVu Sans Mono", 8, "bold"), anchor="w")
+        sec_gov.pack(fill="x", padx=10, pady=(4, 2))
+
+        gov_box = tk.Frame(parent, bg=VS_EDITOR_BG, highlightthickness=1, highlightbackground=VS_BORDER, padx=8, pady=6)
+        gov_box.pack(fill="x", padx=12, pady=(0, 10))
+
+        lbl_masking = tk.Label(gov_box, text="SECRET MASKING: ACTIVE\nPII PROTECTION: ENABLED", bg=VS_EDITOR_BG, fg=VS_TEXT_MAIN, font=("DejaVu Sans Mono", 8), justify="left", anchor="w")
+        lbl_masking.pack(fill="x")
+
+        sig_txt = f"MANIFEST SHA-256:\n{self.last_audit_sig[:24]}..." if self.last_audit_sig else "MANIFEST SHA-256:\n[PENDING EXECUTION]"
+        self.lbl_audit_sig = tk.Label(gov_box, text=sig_txt, bg=VS_EDITOR_BG, fg=VS_TEXT_MUTED, font=("DejaVu Sans Mono", 7), justify="left", anchor="w")
+        self.lbl_audit_sig.pack(fill="x", pady=(4, 0))
+
+    def _action_register_bronze(self) -> None:
+        meta = self.medallion_catalog.register_table("raw_ingest", MedallionStage.BRONZE, self.current_df)
+        self._update_status(f"[MEDALLION: REGISTERED BRONZE TABLE 'raw_ingest' ({meta.row_count} rows)]")
+        if self.active_sidebar_view == "fabric":
+            self.switch_sidebar("fabric")
+
+    def _action_promote_silver(self) -> None:
+        email_cols = [c for c in self.current_df.columns if "email" in c.lower()]
+        phone_cols = [c for c in self.current_df.columns if "phone" in c.lower() or "contact" in c.lower()]
+        masked_df = PIIMasker.mask_dataframe(self.current_df, email_cols=email_cols, phone_cols=phone_cols)
+        meta = self.medallion_catalog.register_table("cleansed_silver", MedallionStage.SILVER, masked_df)
+        self.current_df = masked_df
+        self._populate_treeview(self.current_df.head(25))
+        self._update_status(f"[MEDALLION: PROMOTED TO SILVER WITH PII MASKING ({meta.row_count} rows)]")
+        if self.active_sidebar_view == "fabric":
+            self.switch_sidebar("fabric")
+
+    def _action_promote_gold(self) -> None:
+        num_cols = [c for c in self.current_df.columns if pd.api.types.is_numeric_dtype(self.current_df[c])]
+        cat_cols = [c for c in self.current_df.columns if not pd.api.types.is_numeric_dtype(self.current_df[c])]
+        if cat_cols and num_cols:
+            group_col = cat_cols[0]
+            gold_df = self.current_df.groupby(group_col)[num_cols].sum().reset_index()
+        else:
+            gold_df = self.current_df.describe().reset_index()
+        meta = self.medallion_catalog.register_table("gold_aggregates", MedallionStage.GOLD, gold_df)
+        self.current_df = gold_df
+        self._populate_treeview(self.current_df.head(25))
+        self._update_status(f"[MEDALLION: PROMOTED TO GOLD ANALYTICS TABLE ({meta.row_count} rows)]")
+        if self.active_sidebar_view == "fabric":
+            self.switch_sidebar("fabric")
 
     def _test_sql_connection(self) -> None:
         try:
@@ -824,13 +952,26 @@ class OpenFlowLocalApp:
 
         if output.status == "succeeded":
             telemetry_str = f"[STATUS: SUCCEEDED] [ROWS: {output.row_count}] [TIME: {output.duration_ms}ms]"
+            if output.capacity_report:
+                self.cumulative_cu += output.capacity_report.capacity_units
+                self.cumulative_savings_usd += output.capacity_report.cost_avoidance_usd
+                telemetry_str += f" [CU: {output.capacity_report.capacity_units:g}] [SAVED: ${output.capacity_report.cost_avoidance_usd:g}]"
+            if output.audit_record:
+                self.last_audit_sig = output.audit_record.manifest_signature
+
             self.telemetry_inline.configure(text=telemetry_str)
             self._update_status(f"{telemetry_str} | ENGINE: {self.current_engine.upper()}", color=VS_STATUS_BAR)
             res_df = pd.DataFrame(output.records) if output.records else pd.DataFrame(columns=output.columns)
             self._populate_treeview(res_df)
+            if self.active_sidebar_view == "fabric":
+                self.switch_sidebar("fabric")
         else:
+            if output.audit_record:
+                self.last_audit_sig = output.audit_record.manifest_signature
             self.telemetry_inline.configure(text=f"[STATUS: FAILED] [ERROR: {output.error}]")
             self._update_status(f"[FAILED: {output.error}]", color=VS_ERROR_RED)
+            if self.active_sidebar_view == "fabric":
+                self.switch_sidebar("fabric")
 
     def _populate_treeview(self, df: pd.DataFrame) -> None:
         self.tree.delete(*self.tree.get_children())
