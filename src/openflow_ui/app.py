@@ -189,8 +189,8 @@ class OpenFlowLocalApp:
                 parent,
                 text=text,
                 command=command,
-                bg=VS_ACTIVITY_BAR,
-                fg=VS_TEXT_BRIGHT if active else VS_TEXT_MAIN,
+                bg=VS_SIDEBAR_BG if active else VS_ACTIVITY_BAR,
+                fg=VS_TEXT_BRIGHT if active else VS_TEXT_MUTED,
                 activebackground=VS_SIDEBAR_BG,
                 activeforeground=VS_TEXT_BRIGHT,
                 relief="flat",
@@ -238,20 +238,20 @@ class OpenFlowLocalApp:
         for widget in self.sidebar_content.winfo_children():
             widget.destroy()
 
-        self.btn_act_explorer.configure(fg=VS_TEXT_MAIN)
-        self.btn_act_connectors.configure(fg=VS_TEXT_MAIN)
-        self.btn_act_fabric.configure(fg=VS_TEXT_MAIN)
+        self.btn_act_explorer.configure(bg=VS_ACTIVITY_BAR, fg=VS_TEXT_MUTED)
+        self.btn_act_connectors.configure(bg=VS_ACTIVITY_BAR, fg=VS_TEXT_MUTED)
+        self.btn_act_fabric.configure(bg=VS_ACTIVITY_BAR, fg=VS_TEXT_MUTED)
 
         if view_name == "explorer":
-            self.btn_act_explorer.configure(fg=VS_TEXT_BRIGHT)
+            self.btn_act_explorer.configure(bg=VS_SIDEBAR_BG, fg=VS_TEXT_BRIGHT)
             self.sidebar_title_lbl.configure(text="EXPLORER: OPENFLOW")
             self._render_explorer_view()
         elif view_name == "connectors":
-            self.btn_act_connectors.configure(fg=VS_TEXT_BRIGHT)
+            self.btn_act_connectors.configure(bg=VS_SIDEBAR_BG, fg=VS_TEXT_BRIGHT)
             self.sidebar_title_lbl.configure(text="CONNECTORS: CLOUD & DB")
             self._render_connectors_view()
         else:
-            self.btn_act_fabric.configure(fg=VS_TEXT_BRIGHT)
+            self.btn_act_fabric.configure(bg=VS_SIDEBAR_BG, fg=VS_TEXT_BRIGHT)
             self.sidebar_title_lbl.configure(text="DATA FABRIC & FINOPS")
             self._render_fabric_view()
 
@@ -638,6 +638,7 @@ class OpenFlowLocalApp:
         ed_vsb.pack(side="right", fill="y")
         ed_hsb.pack(side="bottom", fill="x")
         self.code_text.pack(side="left", fill="both", expand=True)
+        self._setup_syntax_highlighting()
 
         self.code_text.insert("1.0", CODE_STARTERS[self.current_engine])
         self.code_text.bind("<KeyRelease>", lambda e: self._update_line_numbers())
@@ -856,6 +857,55 @@ class OpenFlowLocalApp:
     def _on_text_scroll(self, first: str, last: str) -> None:
         self.line_gutter.yview_moveto(first)
 
+    def _setup_syntax_highlighting(self) -> None:
+        self.code_text.tag_configure("kw_python", foreground="#569cd6", font=("DejaVu Sans Mono", 10, "bold"))
+        self.code_text.tag_configure("kw_sql", foreground="#c586c0", font=("DejaVu Sans Mono", 10, "bold"))
+        self.code_text.tag_configure("func", foreground="#dcdcaa")
+        self.code_text.tag_configure("string", foreground="#ce9178")
+        self.code_text.tag_configure("comment", foreground="#6a9955", font=("DejaVu Sans Mono", 10, "italic"))
+        self.code_text.tag_configure("number", foreground="#b5cea8")
+        self.code_text.tag_configure("pyspark_var", foreground="#4ec9b0", font=("DejaVu Sans Mono", 10, "bold"))
+
+    def _apply_syntax_highlighting(self) -> None:
+        content = self.code_text.get("1.0", "end-1c")
+        if not content:
+            return
+
+        for tag in ["kw_python", "kw_sql", "func", "string", "comment", "number", "pyspark_var"]:
+            self.code_text.tag_remove(tag, "1.0", "end")
+
+        import re
+
+        # Comments (# ... or -- ...)
+        for match in re.finditer(r"(#|--)[^\n]*", content):
+            self.code_text.tag_add("comment", f"1.0 + {match.start()} chars", f"1.0 + {match.end()} chars")
+
+        # Strings ('...' or "...")
+        for match in re.finditer(r"(\"[^\"]*\"|'[^']*')", content):
+            self.code_text.tag_add("string", f"1.0 + {match.start()} chars", f"1.0 + {match.end()} chars")
+
+        # Numbers
+        for match in re.finditer(r"\b\d+(\.\d+)?\b", content):
+            self.code_text.tag_add("number", f"1.0 + {match.start()} chars", f"1.0 + {match.end()} chars")
+
+        # Python Keywords
+        py_kws = r"\b(def|class|import|from|return|if|else|elif|for|while|in|and|or|not|None|True|False|as|with|lambda)\b"
+        for match in re.finditer(py_kws, content):
+            self.code_text.tag_add("kw_python", f"1.0 + {match.start()} chars", f"1.0 + {match.end()} chars")
+
+        # PySpark special variables
+        for match in re.finditer(r"\b(df|df_out|spark|F|col)\b", content):
+            self.code_text.tag_add("pyspark_var", f"1.0 + {match.start()} chars", f"1.0 + {match.end()} chars")
+
+        # SQL Keywords
+        sql_kws = r"(?i)\b(SELECT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|JOIN|LEFT|RIGHT|INNER|OUTER|ON|AS|AND|OR|NOT|IN|COUNT|SUM|AVG|MIN|MAX|DISTINCT|LIMIT|CASE|WHEN|THEN|ELSE|END)\b"
+        for match in re.finditer(sql_kws, content):
+            self.code_text.tag_add("kw_sql", f"1.0 + {match.start()} chars", f"1.0 + {match.end()} chars")
+
+        # Functions (e.g. .filter(, .groupBy(, .agg(, alias()
+        for match in re.finditer(r"\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", content):
+            self.code_text.tag_add("func", f"1.0 + {match.start(1)} chars", f"1.0 + {match.end(1)} chars")
+
     def _update_line_numbers(self) -> None:
         lines = int(self.code_text.index("end-1c").split(".")[0])
         self.line_gutter.configure(state="normal")
@@ -863,6 +913,7 @@ class OpenFlowLocalApp:
         gutter_text = "\n".join(f"{i:>3} " for i in range(1, lines + 1))
         self.line_gutter.insert("1.0", gutter_text)
         self.line_gutter.configure(state="disabled")
+        self._apply_syntax_highlighting()
 
     def set_engine(self, engine: str) -> None:
         self.current_engine = engine

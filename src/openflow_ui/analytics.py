@@ -178,7 +178,9 @@ class InteractiveChartCanvas:
             by = margin_top + plot_h - bh
 
             # Bar rectangle
-            self.canvas.create_rectangle(bx, by, bx + bar_w, margin_top + plot_h, fill=VS_BAR_COLOR, outline=VS_BAR_COLOR)
+            self.canvas.create_rectangle(bx, by, bx + bar_w, margin_top + plot_h, fill=VS_BAR_COLOR, outline="#005999")
+            # Top accent cap line
+            self.canvas.create_line(bx, by, bx + bar_w, by, fill="#58a6ff", width=2)
 
             # Value label on top of bar
             self.canvas.create_text(bx + bar_w / 2, by - 6, text=f"{val:g}", fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 7), anchor="s")
@@ -231,6 +233,14 @@ class InteractiveChartCanvas:
             py = margin_top + plot_h - (int((val / max_val) * plot_h) if max_val > 0 else 0)
             points.append((px, py))
 
+        # Shaded area under curve
+        if len(points) >= 2:
+            poly_coords = [margin_left, margin_top + plot_h]
+            for px, py in points:
+                poly_coords.extend([px, py])
+            poly_coords.extend([points[-1][0], margin_top + plot_h])
+            self.canvas.create_polygon(*poly_coords, fill="#122a18", outline="")
+
         # Draw connecting line segments
         for i in range(len(points) - 1):
             x1, y1 = points[i]
@@ -239,7 +249,8 @@ class InteractiveChartCanvas:
 
         # Draw point dots and labels
         for i, (px, py) in enumerate(points):
-            self.canvas.create_oval(px - 3, py - 3, px + 3, py + 3, fill=VS_POINT_COLOR, outline=VS_POINT_COLOR)
+            self.canvas.create_oval(px - 4, py - 4, px + 4, py + 4, fill="#238636", outline="#3fb950")
+            self.canvas.create_oval(px - 2, py - 2, px + 2, py + 2, fill="#ffffff", outline="#ffffff")
             lbl = labels[i]
             short_lbl = lbl if len(lbl) <= 8 else f"{lbl[:6]}.."
             self.canvas.create_text(px, margin_top + plot_h + 12, text=short_lbl, fill=VS_TEXT_COLOR, font=("DejaVu Sans Mono", 8), anchor="n")

@@ -202,3 +202,4 @@ def test_ui_fabric_view_and_medallion_actions(tk_app: OpenFlowLocalApp) -> None:
 
     assert tk_app.cumulative_cu >= 0.0
     assert tk_app.last_audit_sig != ""
+

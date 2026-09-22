@@ -94,3 +94,18 @@ def test_ui_execution_error_reporting(tk_app: OpenFlowLocalApp) -> None:
     assert "FAILED" in telemetry
     assert "division by zero" in telemetry
 
+
+def test_ui_syntax_highlighting(tk_app: OpenFlowLocalApp) -> None:
+    tk_app.set_engine("sql")
+    # Verify SQL query has keywords highlighted
+    ranges_kw = tk_app.code_text.tag_ranges("kw_sql")
+    assert len(ranges_kw) > 0
+
+    # Switch to PySpark and verify Python keywords & comment tags
+    tk_app.set_engine("pyspark")
+    ranges_comment = tk_app.code_text.tag_ranges("comment")
+    ranges_py = tk_app.code_text.tag_ranges("pyspark_var")
+    assert len(ranges_comment) > 0
+    assert len(ranges_py) > 0
+
+

@@ -99,3 +99,4 @@ class MedallionCatalog:
 
         target_df = transformation_fn(source_df) if transformation_fn else source_df
         return self.register_table(to_name, to_stage, target_df)
+

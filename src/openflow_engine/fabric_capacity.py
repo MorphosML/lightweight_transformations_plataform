@@ -131,3 +131,4 @@ class FabricCapacityRouter:
             raise MemoryError(
                 f"Workload size ({mem_mb:.1f} MB) exceeds maximum allowed worker memory ceiling ({self.memory_ceiling_mb} MB)."
             )
+
