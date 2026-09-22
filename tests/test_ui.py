@@ -93,3 +93,4 @@ def test_ui_execution_error_reporting(tk_app: OpenFlowLocalApp) -> None:
     telemetry = tk_app.telemetry_lbl.cget("text")
     assert "FAILED" in telemetry
     assert "division by zero" in telemetry
+
