@@ -66,3 +66,4 @@ def test_code_executor_handles_errors_gracefully() -> None:
     assert out.status == "failed"
     assert "division by zero" in str(out.error)
     assert out.row_count == 0
+

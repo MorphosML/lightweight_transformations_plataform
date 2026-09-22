@@ -66,3 +66,4 @@ orange,8,3.0
     assert sql_res["row_count"] == 2
     assert sql_res["records"][0]["item"] == "apple"
     assert sql_res["records"][0]["subtotal"] == 15.0
+
