@@ -26,6 +26,9 @@ all = [
     "openflow-engine[api,spark,test]",
 ]
 
+[project.scripts]
+openflow-ui = "openflow_ui.app:main"
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
