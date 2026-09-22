@@ -515,22 +515,37 @@ class OpenFlowLocalApp:
         self.code_text.bind("<KeyRelease>", lambda e: self._update_line_numbers())
         self._update_line_numbers()
 
-        # --- Bottom Panel (Data Preview & Telemetry) ---
+        # --- Bottom Panel (Data Preview & Interactive Analytics) ---
         panel_tabs = tk.Frame(bottom_output_frame, bg=VS_SIDEBAR_BG, height=28)
         panel_tabs.pack(fill="x", side="top")
 
-        lbl_tab_preview = tk.Label(
+        self.btn_bottom_preview = tk.Button(
             panel_tabs,
             text="DATA PREVIEW",
+            command=lambda: self.switch_bottom_panel("preview"),
             bg=VS_EDITOR_BG,
             fg=VS_TEXT_BRIGHT,
             font=("DejaVu Sans Mono", 8, "bold"),
+            relief="flat",
+            bd=0,
             padx=10,
-            pady=6,
-            highlightthickness=1,
-            highlightbackground=VS_ACCENT_BLUE,
+            pady=4,
         )
-        lbl_tab_preview.pack(side="left")
+        self.btn_bottom_preview.pack(side="left", padx=2, pady=2)
+
+        self.btn_bottom_analytics = tk.Button(
+            panel_tabs,
+            text="ANALYTICS & CHARTS",
+            command=lambda: self.switch_bottom_panel("analytics"),
+            bg=VS_SIDEBAR_BG,
+            fg=VS_TEXT_MAIN,
+            font=("DejaVu Sans Mono", 8, "bold"),
+            relief="flat",
+            bd=0,
+            padx=10,
+            pady=4,
+        )
+        self.btn_bottom_analytics.pack(side="left", padx=2, pady=2)
 
         self.telemetry_inline = tk.Label(
             panel_tabs,
@@ -543,18 +558,142 @@ class OpenFlowLocalApp:
         self.telemetry_inline.pack(side="right")
         self.telemetry_lbl = self.telemetry_inline
 
-        # Table Grid
-        table_container = tk.Frame(bottom_output_frame, bg=VS_EDITOR_BG)
-        table_container.pack(fill="both", expand=True)
+        # Panel Content Container
+        self.panel_container = tk.Frame(bottom_output_frame, bg=VS_EDITOR_BG)
+        self.panel_container.pack(fill="both", expand=True)
 
-        self.tree = ttk.Treeview(table_container, show="headings", selectmode="browse")
-        tbl_vsb = ttk.Scrollbar(table_container, orient="vertical", command=self.tree.yview)
-        tbl_hsb = ttk.Scrollbar(table_container, orient="horizontal", command=self.tree.xview)
+        # View 1: Data Preview Table
+        self.table_container = tk.Frame(self.panel_container, bg=VS_EDITOR_BG)
+        self.table_container.pack(fill="both", expand=True)
+
+        self.tree = ttk.Treeview(self.table_container, show="headings", selectmode="browse")
+        tbl_vsb = ttk.Scrollbar(self.table_container, orient="vertical", command=self.tree.yview)
+        tbl_hsb = ttk.Scrollbar(self.table_container, orient="horizontal", command=self.tree.xview)
         self.tree.configure(xscrollcommand=tbl_hsb.set, yscrollcommand=tbl_vsb.set)
 
         tbl_vsb.pack(side="right", fill="y")
         tbl_hsb.pack(side="bottom", fill="x")
         self.tree.pack(side="left", fill="both", expand=True)
+
+        # View 2: Analytics & Plotting Canvas
+        from .analytics import AnalyticsEngine, InteractiveChartCanvas
+
+        self.analytics_container = tk.Frame(self.panel_container, bg=VS_EDITOR_BG)
+
+        # Controls Bar for Plotting
+        analytics_controls = tk.Frame(self.analytics_container, bg=VS_TAB_BAR, height=32)
+        analytics_controls.pack(fill="x", side="top", padx=6, pady=(4, 2))
+
+        tk.Label(analytics_controls, text="TYPE:", bg=VS_TAB_BAR, fg=VS_TEXT_MAIN, font=("DejaVu Sans Mono", 8)).pack(side="left", padx=(6, 2))
+        self.chart_type_combo = ttk.Combobox(analytics_controls, values=["BAR", "LINE", "HISTOGRAM"], width=10, state="readonly", font=("DejaVu Sans Mono", 8))
+        self.chart_type_combo.set("BAR")
+        self.chart_type_combo.pack(side="left", padx=2)
+
+        tk.Label(analytics_controls, text="X:", bg=VS_TAB_BAR, fg=VS_TEXT_MAIN, font=("DejaVu Sans Mono", 8)).pack(side="left", padx=(8, 2))
+        self.chart_x_combo = ttk.Combobox(analytics_controls, width=14, state="readonly", font=("DejaVu Sans Mono", 8))
+        self.chart_x_combo.pack(side="left", padx=2)
+
+        tk.Label(analytics_controls, text="Y:", bg=VS_TAB_BAR, fg=VS_TEXT_MAIN, font=("DejaVu Sans Mono", 8)).pack(side="left", padx=(8, 2))
+        self.chart_y_combo = ttk.Combobox(analytics_controls, width=14, state="readonly", font=("DejaVu Sans Mono", 8))
+        self.chart_y_combo.pack(side="left", padx=2)
+
+        tk.Label(analytics_controls, text="AGG:", bg=VS_TAB_BAR, fg=VS_TEXT_MAIN, font=("DejaVu Sans Mono", 8)).pack(side="left", padx=(8, 2))
+        self.chart_agg_combo = ttk.Combobox(analytics_controls, values=["SUM", "AVG", "COUNT", "MIN", "MAX", "NONE"], width=8, state="readonly", font=("DejaVu Sans Mono", 8))
+        self.chart_agg_combo.set("SUM")
+        self.chart_agg_combo.pack(side="left", padx=2)
+
+        btn_plot = tk.Button(
+            analytics_controls,
+            text="UPDATE PLOT",
+            command=self.update_analytics_plot,
+            bg=VS_ACCENT_BLUE,
+            fg=VS_TEXT_BRIGHT,
+            activebackground=VS_ACCENT_HOVER,
+            activeforeground=VS_TEXT_BRIGHT,
+            relief="flat",
+            font=("DejaVu Sans Mono", 8, "bold"),
+            padx=10,
+            pady=2,
+        )
+        btn_plot.pack(side="left", padx=10)
+
+        # Summary Statistics Strip
+        self.analytics_stats_lbl = tk.Label(
+            self.analytics_container,
+            text="STATS: SELECT COLUMNS TO CALCULATE SUMMARY METRICS",
+            bg=VS_SIDEBAR_BG,
+            fg=VS_TEXT_MAIN,
+            font=("DejaVu Sans Mono", 8),
+            anchor="w",
+            padx=10,
+            pady=3,
+        )
+        self.analytics_stats_lbl.pack(fill="x", side="top", padx=6, pady=2)
+
+        # Vector Canvas
+        canvas_widget = tk.Canvas(self.analytics_container, bg=VS_EDITOR_BG, highlightthickness=0)
+        canvas_widget.pack(fill="both", expand=True, padx=6, pady=4)
+        self.chart_canvas = InteractiveChartCanvas(canvas_widget)
+
+    def switch_bottom_panel(self, mode: str) -> None:
+        if mode == "preview":
+            self.btn_bottom_preview.configure(bg=VS_EDITOR_BG, fg=VS_TEXT_BRIGHT)
+            self.btn_bottom_analytics.configure(bg=VS_SIDEBAR_BG, fg=VS_TEXT_MAIN)
+            self.analytics_container.pack_forget()
+            self.table_container.pack(fill="both", expand=True)
+        else:
+            self.btn_bottom_preview.configure(bg=VS_SIDEBAR_BG, fg=VS_TEXT_MAIN)
+            self.btn_bottom_analytics.configure(bg=VS_EDITOR_BG, fg=VS_TEXT_BRIGHT)
+            self.table_container.pack_forget()
+            self.analytics_container.pack(fill="both", expand=True)
+            self._update_chart_comboboxes()
+            self.update_analytics_plot()
+
+    def _update_chart_comboboxes(self) -> None:
+        cols = list(self.current_df.columns)
+        num_cols = [c for c in cols if pd.api.types.is_numeric_dtype(self.current_df[c])]
+
+        self.chart_x_combo["values"] = cols
+        self.chart_y_combo["values"] = num_cols if num_cols else cols
+
+        if cols and (not self.chart_x_combo.get() or self.chart_x_combo.get() not in cols):
+            # Prefer country or category for X if available
+            cand = next((c for c in ["country", "category", "device_id", "status"] if c in cols), cols[0])
+            self.chart_x_combo.set(cand)
+
+        if num_cols and (not self.chart_y_combo.get() or self.chart_y_combo.get() not in num_cols):
+            # Prefer amount or temperature
+            cand_y = next((c for c in ["amount", "total_revenue", "temperature", "monthly_spend"] if c in num_cols), num_cols[0])
+            self.chart_y_combo.set(cand_y)
+
+    def update_analytics_plot(self) -> None:
+        from .analytics import AnalyticsEngine
+
+        df = self.current_df
+        if df.empty:
+            self.chart_canvas.clear()
+            return
+
+        x_col = self.chart_x_combo.get() or df.columns[0]
+        y_col = self.chart_y_combo.get() or (df.columns[1] if len(df.columns) > 1 else df.columns[0])
+        chart_type = self.chart_type_combo.get() or "BAR"
+        agg_func = self.chart_agg_combo.get() or "SUM"
+
+        # Update summary statistics strip
+        stats = AnalyticsEngine.compute_summary_stats(df, y_col)
+        self.analytics_stats_lbl.configure(
+            text=f"STATS [{y_col}]: COUNT: {int(stats['count'])} | SUM: {stats['sum']:g} | MEAN: {stats['mean']:g} | MIN: {stats['min']:g} | MAX: {stats['max']:g} | STD: {stats['std']:g}"
+        )
+
+        if chart_type == "HISTOGRAM":
+            labels, values = AnalyticsEngine.compute_histogram(df, y_col, bins=8)
+            self.chart_canvas.plot_bar(labels, values, title=f"FREQUENCY DISTRIBUTION: {y_col.upper()}")
+        elif chart_type == "LINE":
+            labels, values = AnalyticsEngine.aggregate_data(df, x_col, y_col, agg_func)
+            self.chart_canvas.plot_line(labels, values, title=f"{y_col.upper()} TREND BY {x_col.upper()} ({agg_func})")
+        else:  # BAR
+            labels, values = AnalyticsEngine.aggregate_data(df, x_col, y_col, agg_func)
+            self.chart_canvas.plot_bar(labels, values, title=f"{agg_func} OF {y_col.upper()} BY {x_col.upper()}")
 
     def _build_status_bar(self, parent: tk.Frame) -> None:
         self.sb_left = tk.Label(

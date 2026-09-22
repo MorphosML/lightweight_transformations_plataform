@@ -119,3 +119,4 @@ def test_vscode_ui_sidebar_switching() -> None:
     assert app.active_sidebar_view == "explorer"
 
     root.destroy()
+

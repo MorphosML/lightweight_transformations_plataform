@@ -124,3 +124,4 @@ class SQLSanitizer:
                 raise SecurityError(f"Prohibited SQL keyword detected: {matched}")
 
         return single_query
+
