@@ -32,8 +32,17 @@ except ImportError:
     class HTMLResponse:  # type: ignore
         def __init__(self, content: str): self.content = content
 
+from dataclasses import asdict
+from openflow_engine.cloud_connectors import (
+    S3BucketConfig,
+    S3BucketConnector,
+    SQLDatabaseConfig,
+    SQLDatabaseConnector,
+)
 from openflow_engine.connectors import InMemoryConnector
 from openflow_engine.errors import CycleError, PipelineExecutionError
+from openflow_engine.governance import PIIMasker
+from openflow_engine.medallion import MedallionCatalog, MedallionStage
 from .code_executor import CodeExecutor, ExecutionOutput
 from .deps import TenantContext, get_tenant_context
 from .schemas import (
@@ -52,6 +61,7 @@ app = FastAPI(
 
 # Shared in-memory connector and pipeline store
 shared_connector = InMemoryConnector()
+medallion_catalog = MedallionCatalog()
 pipeline_service = PipelineService(default_connector=shared_connector)
 _PIPELINES_DB: dict[str, dict[str, Any]] = {}
 
@@ -196,6 +206,9 @@ def execute_transform(
         limit=payload.limit,
     )
 
+    cap_dict = asdict(result.capacity_report) if result.capacity_report else None
+    audit_dict = asdict(result.audit_record) if result.audit_record else None
+
     return {
         "status": result.status,
         "duration_ms": result.duration_ms,
@@ -205,7 +218,121 @@ def execute_transform(
         "records": result.records,
         "error": result.error,
         "engine_details": result.engine_details,
+        "capacity_report": cap_dict,
+        "audit_record": audit_dict,
     }
+
+
+# Cloud Connector Test Endpoints
+class SQLCheckRequest(BaseModel):
+    engine_type: str = "sqlite"
+    database: str = ":memory:"
+    host: str = "localhost"
+    port: int = 5432
+    username: str = "postgres"
+    password: str = ""
+
+
+@app.post("/api/v1/connectors/test-sql")
+def check_sql_endpoint(payload: SQLCheckRequest) -> dict[str, Any]:
+    try:
+        cfg = SQLDatabaseConfig(
+            engine_type=payload.engine_type,
+            database=payload.database,
+            host=payload.host,
+            port=payload.port,
+            username=payload.username,
+            password=payload.password,
+        )
+        conn = SQLDatabaseConnector(cfg)
+        conn.test_connection()
+        return {"status": "connected", "engine": payload.engine_type, "message": "SSL connection verified"}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+class S3CheckRequest(BaseModel):
+    bucket_name: str = "openflow-lakehouse"
+    region: str = "us-east-1"
+    endpoint_url: str | None = None
+
+
+@app.post("/api/v1/connectors/test-s3")
+def check_s3_endpoint(payload: S3CheckRequest) -> dict[str, Any]:
+    try:
+        cfg = S3BucketConfig(
+            bucket_name=payload.bucket_name,
+            region=payload.region,
+            endpoint_url=payload.endpoint_url,
+        )
+        conn = S3BucketConnector(cfg)
+        conn.test_connection()
+        return {"status": "connected", "bucket": payload.bucket_name, "message": "IAM bucket reachable"}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+# Medallion Lakehouse Endpoints
+class MedallionRequest(BaseModel):
+    dataset_key: str = "ecommerce_sales.csv"
+
+
+@app.get("/api/v1/medallion/tables")
+def get_medallion_tables() -> dict[str, Any]:
+    return {
+        "bronze": [asdict(m) for m in medallion_catalog.list_tables(MedallionStage.BRONZE)],
+        "silver": [asdict(m) for m in medallion_catalog.list_tables(MedallionStage.SILVER)],
+        "gold": [asdict(m) for m in medallion_catalog.list_tables(MedallionStage.GOLD)],
+    }
+
+
+@app.post("/api/v1/medallion/register-bronze")
+def api_register_bronze(
+    payload: MedallionRequest,
+    tenant: TenantContext = Depends(get_tenant_context),
+) -> dict[str, Any]:
+    try:
+        df = shared_connector.read(tenant.org_id, payload.dataset_key, tenant.project_id)
+    except KeyError:
+        _, df = _generate_preset_dataframe("ecommerce")
+    meta = medallion_catalog.register_table("raw_ingest", MedallionStage.BRONZE, df)
+    return {"status": "registered", "meta": asdict(meta)}
+
+
+@app.post("/api/v1/medallion/promote-silver")
+def api_promote_silver(
+    payload: MedallionRequest,
+    tenant: TenantContext = Depends(get_tenant_context),
+) -> dict[str, Any]:
+    try:
+        df = shared_connector.read(tenant.org_id, payload.dataset_key, tenant.project_id)
+    except KeyError:
+        _, df = _generate_preset_dataframe("ecommerce")
+    email_cols = [c for c in df.columns if "email" in c.lower()]
+    phone_cols = [c for c in df.columns if "phone" in c.lower() or "contact" in c.lower()]
+    masked_df = PIIMasker.mask_dataframe(df, email_cols=email_cols, phone_cols=phone_cols)
+    meta = medallion_catalog.register_table("cleansed_silver", MedallionStage.SILVER, masked_df)
+    return {"status": "promoted", "meta": asdict(meta)}
+
+
+@app.post("/api/v1/medallion/promote-gold")
+def api_promote_gold(
+    payload: MedallionRequest,
+    tenant: TenantContext = Depends(get_tenant_context),
+) -> dict[str, Any]:
+    try:
+        df = shared_connector.read(tenant.org_id, payload.dataset_key, tenant.project_id)
+    except KeyError:
+        _, df = _generate_preset_dataframe("ecommerce")
+    num_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+    cat_cols = [c for c in df.columns if not pd.api.types.is_numeric_dtype(df[c])]
+    if cat_cols and num_cols:
+        gold_df = df.groupby(cat_cols[0])[num_cols].sum().reset_index()
+    else:
+        gold_df = df.describe().reset_index()
+    meta = medallion_catalog.register_table("gold_aggregates", MedallionStage.GOLD, gold_df)
+    return {"status": "promoted", "meta": asdict(meta)}
+
 
 
 # Pipeline Endpoints

@@ -3,211 +3,346 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OpenFlow ELT — Ingestion & Transformation Studio</title>
+  <title>OpenFlow ELT Platform — Fabric Studio</title>
+  
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Monaco Editor -->
+  <!-- Chart.js for High-End Interactive Vector Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Monaco Editor (Official VS Code Engine) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+            vs: {
+              bg: '#1e1e1e',
+              sidebar: '#252526',
+              activity: '#333333',
+              tab: '#2d2d2d',
+              border: '#2b2b2b',
+              accent: '#007acc',
+              hover: '#0098ff',
+              green: '#238636',
+              greenHover: '#2ea043',
+              purple: '#8957e5',
+            }
           }
         }
       }
     }
   </script>
+
   <style>
-    /* Custom scrollbars */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #1e1e2e; }
-    ::-webkit-scrollbar-thumb { background: #3b3b4f; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #4f4f6e; }
+    /* Industrial sharp geometry & custom scrollbars */
+    * { border-radius: 0 !important; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e1e1e; }
+    ::-webkit-scrollbar-thumb { background: #3b3b4f; }
+    ::-webkit-scrollbar-thumb:hover { background: #007acc; }
+    .monaco-editor, .monaco-editor .overflow-guard { border-radius: 0 !important; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="bg-[#1e1e1e] text-slate-200 min-h-screen flex flex-col font-mono select-none antialiased">
 
-  <!-- Header -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+  <!-- Top App Navigation / Status Bar -->
+  <header class="h-10 bg-[#333333] border-b border-[#2b2b2b] px-4 flex items-center justify-between z-30">
     <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
-        OF
+      <div class="bg-[#007acc] text-white font-bold text-xs px-2 py-0.5 tracking-wider">
+        OPENFLOW
       </div>
-      <div>
-        <h1 class="text-base font-semibold text-white tracking-wide">OpenFlow ELT Platform</h1>
-        <p class="text-xs text-slate-400">Ingestion Studio & Interactive Transformation Playground</p>
+      <div class="text-xs text-slate-300 font-medium">
+        DATA FABRIC STUDIO <span class="text-slate-500 font-normal">| Lakehouse & FinOps Engine</span>
       </div>
     </div>
 
-    <div class="flex items-center gap-4">
-      <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700/60 text-xs">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-slate-300 font-mono" id="tenantBadge">Org: demo-tenant | Proj: elt-prod</span>
+    <!-- Center Navigation Tabs -->
+    <div class="flex items-center gap-1 text-xs">
+      <button onclick="switchMainView('studio')" id="nav-studio" class="px-3 py-1 bg-[#252526] text-white font-bold border-b-2 border-[#007acc]">
+        [STUDIO]
+      </button>
+      <button onclick="switchMainView('connectors')" id="nav-connectors" class="px-3 py-1 text-slate-400 hover:text-slate-200 hover:bg-[#252526]">
+        [CONNECTORS]
+      </button>
+      <button onclick="switchMainView('fabric')" id="nav-fabric" class="px-3 py-1 text-slate-400 hover:text-slate-200 hover:bg-[#252526]">
+        [LAKEHOUSE FABRIC]
+      </button>
+    </div>
+
+    <div class="flex items-center gap-3 text-xs">
+      <div class="flex items-center gap-1.5 bg-[#252526] px-2.5 py-1 border border-[#2b2b2b]">
+        <span class="w-2 h-2 bg-emerald-400"></span>
+        <span class="text-slate-300" id="tenantBadge">TENANT: default_tenant | PROJ: analytics</span>
       </div>
-      <a href="/docs" target="_blank" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
-        API Docs &rarr;
-      </a>
+      <div class="text-[11px] text-[#58a6ff]" id="headerTierBadge">
+        [TIER 0: EMBEDDED OLAP]
+      </div>
     </div>
   </header>
 
-  <!-- Main Content Layout -->
-  <main class="flex-1 grid grid-cols-12 gap-4 p-4 overflow-hidden">
+  <!-- Main Studio Workspace Grid -->
+  <main class="flex-1 flex overflow-hidden">
 
-    <!-- Left Column: Ingestion Panel (4 cols) -->
-    <section class="col-span-12 lg:col-span-4 flex flex-col gap-4">
+    <!-- Activity Bar (Far Left 48px) -->
+    <nav class="w-12 bg-[#333333] border-r border-[#2b2b2b] flex flex-col items-center py-2 gap-2 z-20">
+      <button onclick="switchSidebarTab('explorer')" id="act-btn-explorer" title="Explorer / Ingestion" class="w-10 h-10 flex items-center justify-center text-xs font-bold bg-[#252526] text-white border-l-2 border-[#007acc]">
+        FILES
+      </button>
+      <button onclick="switchSidebarTab('connectors-sidebar')" id="act-btn-connectors" title="Cloud Connectors" class="w-10 h-10 flex items-center justify-center text-xs font-bold text-slate-400 hover:text-white hover:bg-[#252526]">
+        DB
+      </button>
+      <button onclick="switchSidebarTab('fabric-sidebar')" id="act-btn-fabric" title="Fabric & FinOps" class="w-10 h-10 flex items-center justify-center text-xs font-bold text-slate-400 hover:text-white hover:bg-[#252526]">
+        FABRIC
+      </button>
+      <div class="flex-1"></div>
+      <button onclick="runTransformation()" title="Execute Transformation (F5)" class="w-10 h-10 flex items-center justify-center text-xs font-bold bg-[#238636] hover:bg-[#2ea043] text-white">
+        RUN
+      </button>
+    </nav>
+
+    <!-- Sidebar (Collapsible 260px) -->
+    <aside class="w-64 bg-[#252526] border-r border-[#2b2b2b] flex flex-col overflow-y-auto">
       
-      <!-- Ingestion Source Card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 shadow-md">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            <span>📥</span> Data Ingestion
-          </h2>
-          <span class="text-xs px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">Source</span>
+      <!-- Explorer View Content -->
+      <div id="view-sidebar-explorer" class="p-3 flex flex-col gap-4">
+        <div>
+          <div class="text-[11px] font-bold text-white tracking-wider mb-2">v INGESTION SOURCES</div>
+          <div class="flex flex-col gap-1 text-xs">
+            <button onclick="selectPreset('ecommerce')" class="preset-opt text-left px-2.5 py-1.5 bg-[#1e1e1e] text-[#58a6ff] border border-[#007acc] font-medium flex justify-between items-center">
+              <span>ecommerce_sales.csv</span>
+              <span class="text-[10px] text-slate-500">100r</span>
+            </button>
+            <button onclick="selectPreset('iot_sensors')" class="preset-opt text-left px-2.5 py-1.5 bg-[#252526] text-slate-300 hover:bg-[#1e1e1e] border border-transparent hover:border-[#2b2b2b] flex justify-between items-center">
+              <span>iot_telemetry.csv</span>
+              <span class="text-[10px] text-slate-500">100r</span>
+            </button>
+            <button onclick="selectPreset('customers')" class="preset-opt text-left px-2.5 py-1.5 bg-[#252526] text-slate-300 hover:bg-[#1e1e1e] border border-transparent hover:border-[#2b2b2b] flex justify-between items-center">
+              <span>customer_demo.csv</span>
+              <span class="text-[10px] text-slate-500">100r</span>
+            </button>
+          </div>
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">Preset Sample Datasets</label>
-          <div class="grid grid-cols-1 gap-1.5" id="presetsContainer">
-            <button onclick="loadPreset('ecommerce')" class="preset-btn text-left px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 transition-all flex justify-between items-center">
-              <span>🛒 E-Commerce Transactions</span>
-              <span class="text-[10px] text-slate-400 font-mono">100 rows</span>
-            </button>
-            <button onclick="loadPreset('iot_sensors')" class="preset-btn text-left px-3 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-700 border border-slate-700/60 text-xs font-medium text-slate-300 transition-all flex justify-between items-center">
-              <span>📡 IoT Sensor Telemetry</span>
-              <span class="text-[10px] text-slate-400 font-mono">100 rows</span>
-            </button>
-            <button onclick="loadPreset('customers')" class="preset-btn text-left px-3 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-700 border border-slate-700/60 text-xs font-medium text-slate-300 transition-all flex justify-between items-center">
-              <span>👥 Customer Demographics</span>
-              <span class="text-[10px] text-slate-400 font-mono">100 rows</span>
-            </button>
-          </div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">UPLOAD LOCAL CSV / JSON</label>
+          <input type="file" id="webFileInput" accept=".csv,.json" class="hidden" onchange="handleWebUpload(event)">
+          <button onclick="document.getElementById('webFileInput').click()" class="w-full py-1.5 bg-[#2d2d2d] hover:bg-[#333333] border border-[#2b2b2b] text-xs text-slate-200">
+            + BROWSE FILE...
+          </button>
         </div>
 
-        <!-- Custom Upload / Key -->
-        <div class="pt-2 border-t border-slate-800/80">
-          <div class="flex items-center justify-between mb-1">
-            <label class="text-xs font-medium text-slate-400">Custom CSV Upload</label>
-            <label for="csvFileInput" class="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer font-medium">Browse File...</label>
-            <input type="file" id="csvFileInput" accept=".csv,.json" class="hidden" onchange="handleFileUpload(event)">
+        <!-- Inferred Schema Card -->
+        <div class="bg-[#1e1e1e] border border-[#2b2b2b] p-2.5 flex flex-col gap-1.5">
+          <div class="flex justify-between items-center text-[11px] font-bold text-slate-300">
+            <span>INFERRED SCHEMA</span>
+            <span class="text-slate-500 font-normal" id="sidebarRowBadge">100 rows</span>
           </div>
-          <div class="flex gap-2">
-            <input type="text" id="datasetKeyInput" value="ecommerce_sales.csv" placeholder="Dataset key (e.g. data.csv)" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500">
-            <button onclick="reloadIngestedDataset()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors">
-              Load
-            </button>
-          </div>
-        </div>
-
-        <!-- Ingested Schema Summary -->
-        <div class="mt-2 bg-slate-950 rounded-lg p-3 border border-slate-800 flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-slate-300">Ingested Schema</span>
-            <span class="text-[11px] text-slate-500 font-mono" id="ingestStats">6 cols &bull; 100 rows</span>
-          </div>
-          <div class="flex flex-wrap gap-1 max-h-32 overflow-y-auto" id="schemaTags">
-            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">order_id: int</span>
-            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">amount: float</span>
-            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">category: str</span>
-            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">status: str</span>
+          <div class="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1 text-xs" id="sidebarSchemaList">
+            <div class="flex justify-between text-slate-400 font-mono text-[11px]">
+              <span>order_id</span><span class="text-[#4ec9b0]">int64</span>
+            </div>
+            <div class="flex justify-between text-slate-400 font-mono text-[11px]">
+              <span>country</span><span class="text-[#ce9178]">string</span>
+            </div>
+            <div class="flex justify-between text-slate-400 font-mono text-[11px]">
+              <span>amount</span><span class="text-[#b5cea8]">float64</span>
+            </div>
+            <div class="flex justify-between text-slate-400 font-mono text-[11px]">
+              <span>status</span><span class="text-[#ce9178]">string</span>
+            </div>
           </div>
         </div>
-
       </div>
 
-      <!-- Pipeline Integration Note -->
-      <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 text-xs text-slate-400 flex flex-col gap-2">
-        <div class="font-semibold text-slate-300 flex items-center gap-1.5">
-          <span>⚡</span> Distributed Pipeline Ready
+      <!-- Connectors Sidebar Content -->
+      <div id="view-sidebar-connectors" class="p-3 flex flex-col gap-4 hidden">
+        <div class="text-[11px] font-bold text-white tracking-wider">v CLOUD CONNECTORS</div>
+        <div class="bg-[#1e1e1e] border border-[#2b2b2b] p-2.5 flex flex-col gap-2 text-xs">
+          <div class="text-[#58a6ff] font-bold text-[11px]">SQL DATABASE (JDBC)</div>
+          <div class="text-slate-400 text-[11px]">PostgreSQL, MySQL, SQLite, Snowflake</div>
+          <button onclick="quickTestSQL()" class="w-full py-1 bg-[#007acc] hover:bg-[#0098ff] text-white text-xs font-bold">
+            TEST SQL CONNECTION
+          </button>
+          <div class="text-[10px] text-slate-500" id="sqlTestStatus">[READY]</div>
         </div>
-        <p>This interactive studio compiles your code directly into OpenFlow DAG transformations. When submitted to Celery or Spark, transformations execute across your PySpark cluster with zero memory leaks.</p>
+
+        <div class="bg-[#1e1e1e] border border-[#2b2b2b] p-2.5 flex flex-col gap-2 text-xs">
+          <div class="text-[#58a6ff] font-bold text-[11px]">OBJECT STORAGE (S3)</div>
+          <div class="text-slate-400 text-[11px]">s3a://openflow-lakehouse/</div>
+          <button onclick="quickTestS3()" class="w-full py-1 bg-[#2d2d2d] hover:bg-[#333333] border border-[#2b2b2b] text-white text-xs font-bold">
+            TEST S3 CONNECTION
+          </button>
+          <div class="text-[10px] text-slate-500" id="s3TestStatus">[READY]</div>
+        </div>
+
+        <div class="bg-[#1e1e1e] border border-[#2b2b2b] p-2.5 flex flex-col gap-1 text-[10px] text-emerald-400">
+          <div>SHIELD: ACTIVE</div>
+          <div>SSRF GUARD: ENABLED</div>
+          <div>SECRET REDACTION: ON</div>
+        </div>
       </div>
 
-    </section>
+      <!-- Fabric Sidebar Content -->
+      <div id="view-sidebar-fabric" class="p-3 flex flex-col gap-4 hidden">
+        <div class="text-[11px] font-bold text-white tracking-wider">v FINOPS CAPACITY</div>
+        <div class="bg-[#1e1e1e] border border-[#2b2b2b] p-2.5 flex flex-col gap-2 text-xs">
+          <div class="text-[#58a6ff] font-bold" id="sidebarFinopsTier">TIER 0: EMBEDDED OLAP</div>
+          <div class="text-slate-300">CAPACITY CONSUMED: <span id="sidebarFinopsCU" class="font-bold text-white">0.0000 CU</span></div>
+          <div class="text-emerald-400 font-bold">FINOPS SAVINGS: <span id="sidebarFinopsSavings">$0.0000</span></div>
+        </div>
 
-    <!-- Right Column: Code Editor & Live Preview (8 cols) -->
-    <section class="col-span-12 lg:col-span-8 flex flex-col gap-4">
+        <div class="text-[11px] font-bold text-white tracking-wider">v MEDALLION LAKEHOUSE</div>
+        <div class="flex flex-col gap-1.5 text-xs">
+          <button onclick="medallionRegisterBronze()" class="w-full py-1 bg-[#2d2d2d] hover:bg-[#333333] border border-[#2b2b2b] text-slate-200">
+            + REGISTER BRONZE (RAW)
+          </button>
+          <button onclick="medallionPromoteSilver()" class="w-full py-1 bg-[#2d2d2d] hover:bg-[#333333] border border-[#2b2b2b] text-slate-200">
+            + PROMOTE TO SILVER (MASK PII)
+          </button>
+          <button onclick="medallionPromoteGold()" class="w-full py-1 bg-[#2d2d2d] hover:bg-[#333333] border border-[#2b2b2b] text-slate-200">
+            + PROMOTE TO GOLD (AGGREGATE)
+          </button>
+        </div>
 
-      <!-- Code Editor Panel -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden shadow-lg">
+        <div class="bg-[#1e1e1e] border border-[#2b2b2b] p-2 text-[10px] text-slate-400">
+          <div class="font-bold text-slate-300 mb-1">AUDIT MANIFEST SHA-256</div>
+          <div class="font-mono text-[#58a6ff] break-all" id="sidebarAuditHash">[PENDING EXECUTION]</div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Main Workspace (Editor + Analytics/Output Split) -->
+    <section class="flex-1 flex flex-col overflow-hidden bg-[#1e1e1e]">
+      
+      <!-- Editor Top Toolbar -->
+      <div class="h-9 bg-[#2d2d2d] border-b border-[#2b2b2b] flex items-center justify-between px-3">
+        <!-- Active File Tab -->
+        <div class="flex items-center gap-1">
+          <div class="bg-[#1e1e1e] border-t-2 border-[#007acc] px-3 py-1.5 text-xs text-white font-medium flex items-center gap-2" id="activeEditorTab">
+            <span>transform.py</span>
+            <span class="text-slate-500 text-[10px]">x</span>
+          </div>
+
+          <!-- Engine Switchers -->
+          <div class="flex items-center bg-[#252526] p-0.5 ml-2 border border-[#2b2b2b]">
+            <button onclick="switchEngine('pyspark')" id="eng-pyspark" class="px-2 py-0.5 text-[11px] font-bold bg-[#007acc] text-white">PYSPARK</button>
+            <button onclick="switchEngine('ast_filter')" id="eng-ast_filter" class="px-2 py-0.5 text-[11px] font-bold text-slate-400 hover:text-white">AST_FILTER</button>
+            <button onclick="switchEngine('sql')" id="eng-sql" class="px-2 py-0.5 text-[11px] font-bold text-slate-400 hover:text-white">SQL</button>
+            <button onclick="switchEngine('pandas')" id="eng-pandas" class="px-2 py-0.5 text-[11px] font-bold text-slate-400 hover:text-white">PANDAS</button>
+          </div>
+        </div>
+
+        <!-- Telemetry Summary & Run Button -->
+        <div class="flex items-center gap-3">
+          <span class="text-[11px] text-slate-400 font-mono" id="topTelemetry">[STATUS: READY]</span>
+          <button onclick="runTransformation()" class="px-4 py-1 bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-bold flex items-center gap-1.5">
+            <span>RUN</span>
+            <span class="text-[10px] text-emerald-200 font-normal">[F5]</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Monaco Code Editor Container -->
+      <div class="h-[44%] border-b border-[#2b2b2b] relative">
+        <div id="monaco-container" class="absolute inset-0"></div>
+      </div>
+
+      <!-- Bottom Panel (Tabs: Data Preview / Analytics & Charts) -->
+      <div class="flex-1 flex flex-col bg-[#1e1e1e] overflow-hidden">
         
-        <!-- Editor Header Bar -->
-        <div class="bg-slate-800/60 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-white flex items-center gap-1.5">
-              <span>💻</span> Transformation Logic
-            </span>
-            <!-- Engine Selector Tabs -->
-            <div class="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-700/80 ml-2">
-              <button onclick="setEngine('pyspark')" id="tab-pyspark" class="engine-tab px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-medium transition-all">PySpark</button>
-              <button onclick="setEngine('ast_filter')" id="tab-ast_filter" class="engine-tab px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-slate-200 transition-all">Safe AST</button>
-              <button onclick="setEngine('sql')" id="tab-sql" class="engine-tab px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-slate-200 transition-all">SQL</button>
-              <button onclick="setEngine('pandas')" id="tab-pandas" class="engine-tab px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-slate-200 transition-all">Pandas</button>
+        <!-- Panel Tabs Bar -->
+        <div class="h-8 bg-[#252526] border-b border-[#2b2b2b] px-3 flex items-center justify-between">
+          <div class="flex items-center gap-1 text-xs">
+            <button onclick="switchBottomTab('preview')" id="bottom-tab-preview" class="px-3 py-1 bg-[#1e1e1e] text-white font-bold border-b border-[#007acc]">
+              DATA PREVIEW
+            </button>
+            <button onclick="switchBottomTab('analytics')" id="bottom-tab-analytics" class="px-3 py-1 text-slate-400 hover:text-white">
+              ANALYTICS & CHARTS
+            </button>
+          </div>
+
+          <!-- FinOps Metric Badges in Panel Header -->
+          <div class="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+            <span class="bg-[#1e1e1e] px-2 py-0.5 border border-[#2b2b2b]" id="panelCUBadge">CU: 0.0001</span>
+            <span class="bg-[#1e1e1e] px-2 py-0.5 border border-[#2b2b2b] text-emerald-400" id="panelSavingsBadge">SAVED: $0.12</span>
+            <span class="bg-[#1e1e1e] px-2 py-0.5 border border-[#2b2b2b]" id="panelRowsBadge">ROWS: 100</span>
+          </div>
+        </div>
+
+        <!-- Tab 1: Data Preview Table -->
+        <div id="panel-preview" class="flex-1 overflow-auto p-2">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-[#2d2d2d] sticky top-0 text-slate-200 font-bold border-b border-[#2b2b2b]" id="tableHead">
+              <tr>
+                <th class="p-2 border-r border-[#2b2b2b]">order_id</th>
+                <th class="p-2 border-r border-[#2b2b2b]">customer_id</th>
+                <th class="p-2 border-r border-[#2b2b2b]">country</th>
+                <th class="p-2 border-r border-[#2b2b2b]">category</th>
+                <th class="p-2 border-r border-[#2b2b2b]">amount</th>
+                <th class="p-2">status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#2b2b2b] text-slate-300 font-mono" id="tableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab 2: Interactive Analytics & Vector Charts -->
+        <div id="panel-analytics" class="flex-1 flex flex-col p-3 gap-2 hidden overflow-hidden">
+          
+          <!-- Controls Bar -->
+          <div class="flex flex-wrap items-center gap-3 bg-[#252526] p-2 border border-[#2b2b2b] text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-400 text-[11px]">X AXIS:</span>
+              <select id="chartXAxis" onchange="renderChart()" class="bg-[#1e1e1e] border border-[#2b2b2b] text-white px-2 py-1">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-400 text-[11px]">Y METRIC:</span>
+              <select id="chartYAxis" onchange="renderChart()" class="bg-[#1e1e1e] border border-[#2b2b2b] text-white px-2 py-1">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-400 text-[11px]">CHART TYPE:</span>
+              <select id="chartType" onchange="renderChart()" class="bg-[#1e1e1e] border border-[#2b2b2b] text-white px-2 py-1">
+                <option value="bar">BAR CHART</option>
+                <option value="line">LINE TREND</option>
+                <option value="histogram">HISTOGRAM</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-400 text-[11px]">AGG:</span>
+              <select id="chartAgg" onchange="renderChart()" class="bg-[#1e1e1e] border border-[#2b2b2b] text-white px-2 py-1">
+                <option value="SUM">SUM</option>
+                <option value="AVG">AVG</option>
+                <option value="COUNT">COUNT</option>
+                <option value="MIN">MIN</option>
+                <option value="MAX">MAX</option>
+              </select>
+            </div>
+
+            <!-- Summary Stats Pill Strip -->
+            <div class="ml-auto text-[11px] text-slate-300 font-mono flex items-center gap-2" id="chartStatsStrip">
+              <span>COUNT: 100</span> | <span>MEAN: 215.4</span> | <span>SUM: 21540</span> | <span>MIN: 15.0</span> | <span>MAX: 442.5</span>
             </div>
           </div>
 
-          <div class="flex items-center gap-3">
-            <!-- Templates dropdown -->
-            <select id="templateSelect" onchange="applyTemplate()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-300 focus:outline-none focus:border-indigo-500">
-              <option value="">Choose Code Template...</option>
-              <option value="pyspark_filter_group">PySpark: Filter & Group By</option>
-              <option value="pyspark_calc">PySpark: Calculated Column</option>
-              <option value="ast_filter">Safe AST: Multi-condition Filter</option>
-              <option value="sql_agg">SQL: Aggregation & Order</option>
-              <option value="pandas_transform">Pandas: Feature Engineering</option>
-            </select>
-
-            <!-- Execute Button -->
-            <button onclick="runTransformation()" id="runBtn" class="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-medium px-4 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-indigo-500/20 transition-all active:scale-95">
-              <span>▶</span> Run (Ctrl+Enter)
-            </button>
+          <!-- Chart.js Canvas -->
+          <div class="flex-1 relative bg-[#1e1e1e] border border-[#2b2b2b] p-2">
+            <canvas id="analyticsChartCanvas"></canvas>
           </div>
+
         </div>
-
-        <!-- Monaco Editor Container -->
-        <div id="editorContainer" class="h-64 w-full bg-[#1e1e1e]"></div>
-
-      </div>
-
-      <!-- Execution Results & Output Table -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl flex-1 flex flex-col overflow-hidden shadow-lg min-h-[300px]">
-        
-        <!-- Results Bar -->
-        <div class="bg-slate-800/40 px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs">
-          <div class="flex items-center gap-3">
-            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
-              <span>📊</span> Output Preview
-            </span>
-            <span id="statusBadge" class="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono text-[11px]">Ready</span>
-            <span id="metricRows" class="text-slate-400 font-mono">0 rows</span>
-            <span id="metricDuration" class="text-slate-400 font-mono">0.0 ms</span>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <input type="text" id="tableFilter" oninput="filterTable()" placeholder="Search preview..." class="bg-slate-950 border border-slate-700/80 rounded px-2 py-0.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 font-mono">
-            <span id="engineBadge" class="text-slate-400 font-mono text-[11px]">PySpark Engine</span>
-          </div>
-        </div>
-
-        <!-- Table Container -->
-        <div class="flex-1 overflow-auto bg-slate-950/60 p-2" id="tableWrapper">
-          <table class="w-full text-left text-xs border-collapse font-mono" id="resultsTable">
-            <thead class="bg-slate-800/90 text-slate-300 sticky top-0" id="tableHead">
-              <!-- Dynamically populated -->
-            </thead>
-            <tbody class="divide-y divide-slate-800 text-slate-300" id="tableBody">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-          <div id="emptyState" class="p-8 text-center text-slate-500 text-xs">
-            No transformations executed yet. Click "Run (Ctrl+Enter)" to execute your transformation.
-          </div>
-        </div>
-
-        <!-- Error / Console Box (hidden by default) -->
-        <div id="errorBox" class="hidden bg-rose-950/40 border-t border-rose-900 p-3 text-rose-300 font-mono text-xs overflow-x-auto"></div>
 
       </div>
 
@@ -215,170 +350,237 @@
 
   </main>
 
+  <!-- Status Bar at Bottom (Solid VS Code Blue) -->
+  <footer class="h-6 bg-[#007acc] text-white text-[11px] px-3 flex items-center justify-between z-30 font-medium">
+    <div class="flex items-center gap-3">
+      <span>main*</span>
+      <span>|</span>
+      <span>Python 3.12 (PySpark 3.5 & DuckDB OLAP)</span>
+      <span>|</span>
+      <span>UTF-8</span>
+    </div>
+    <div class="flex items-center gap-3" id="bottomStatusBarRight">
+      <span>[STATUS: READY]</span>
+      <span>|</span>
+      <span>Ln 1, Col 1</span>
+      <span>|</span>
+      <span>Telemetry: 12.4ms</span>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
   <script>
-    // App State
+    // State
     let currentEngine = 'pyspark';
     let currentDatasetKey = 'ecommerce_sales.csv';
+    let currentDataRecords = [];
+    let currentColumns = ['order_id', 'customer_id', 'country', 'category', 'amount', 'status'];
     let editor = null;
-    let fullRecords = [];
+    let chartInstance = null;
+    let cumulativeCU = 0.0;
+    let cumulativeSavings = 0.0;
 
-    // Starter code snippets
-    const CODE_SNIPPETS = {
-      pyspark: `# PySpark Transformation Logic
-# 'df' is your PySpark DataFrame, 'F' is pyspark.sql.functions, 'spark' is SparkSession
+    const CODE_STARTERS = {
+      pyspark: `# transform.py (PySpark Distributed Engine)
+# 'df' is PySpark DataFrame, 'F' is pyspark.sql.functions, 'spark' is SparkSession
 
-# Filter high-value orders and calculate customer total sales
 df_out = (
     df.filter(F.col("amount") > 50.0)
       .groupBy("country", "category")
       .agg(
           F.count("order_id").alias("total_orders"),
-          F.round(F.sum("amount"), 2).alias("total_revenue"),
-          F.round(F.avg("amount"), 2).alias("avg_order_value")
+          F.round(F.sum("amount"), 2).alias("total_revenue")
       )
       .orderBy(F.col("total_revenue").desc())
 )
 `,
-      ast_filter: `# Safe AST Expression (Zero RCE Risk)
-# Whitelisted boolean expression evaluated on columns
+      ast_filter: `# filter.expr (Safe AST Engine - Zero RCE)
 amount >= 100.0 and category in ['Electronics', 'Home'] and status == 'Completed'
 `,
-      sql: `-- SQL Query against the ingested dataset (table name: 'data')
+      sql: `-- query.sql (Tier 0 Micro-OLAP SQL Engine)
 SELECT 
     country,
-    category,
-    COUNT(order_id) AS order_count,
-    ROUND(SUM(amount), 2) AS total_amount
+    COUNT(order_id) AS total_orders,
+    ROUND(SUM(amount), 2) AS total_revenue,
+    ROUND(AVG(amount), 2) AS avg_order_value
 FROM data
-WHERE amount > 50.0
-GROUP BY country, category
-ORDER BY total_amount DESC;
+WHERE status = 'Completed'
+GROUP BY country
+ORDER BY total_revenue DESC
 `,
-      pandas: `# Pandas In-Memory Transformation
-# 'df' is your pandas DataFrame
-
-df_out = df[df["amount"] > 50.0].copy()
-df_out["tax"] = df_out["amount"] * 0.15
-df_out["total_with_tax"] = df_out["amount"] + df_out["tax"]
+      pandas: `# transform_pandas.py (Pandas Vectorized In-Memory)
+df_out = df[df['amount'] > 75.0].copy()
+df_out['revenue_tier'] = df_out['amount'].apply(lambda x: 'HIGH' if x > 250 else 'STANDARD')
 `
     };
 
-    const TEMPLATES = {
-      pyspark_filter_group: CODE_SNIPPETS.pyspark,
-      pyspark_calc: `# PySpark Calculated Column & Window
-df_out = df.withColumn("amount_with_vat", F.round(F.col("amount") * 1.20, 2))
-`,
-      ast_filter: CODE_SNIPPETS.ast_filter,
-      sql_agg: CODE_SNIPPETS.sql,
-      pandas_transform: CODE_SNIPPETS.pandas
-    };
-
-    // Initialize Monaco Editor
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
-    require(['vs/editor/editor.main'], function() {
-      editor = monaco.editor.create(document.getElementById('editorContainer'), {
-        value: CODE_SNIPPETS[currentEngine],
+    // Monaco Editor Initialization
+    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+    require(['vs/editor/editor.main'], function () {
+      editor = monaco.editor.create(document.getElementById('monaco-container'), {
+        value: CODE_STARTERS[currentEngine],
         language: 'python',
         theme: 'vs-dark',
         automaticLayout: true,
-        fontSize: 12,
-        minimap: { enabled: false },
-        lineNumbers: 'on',
+        fontSize: 13,
+        minimap: { enabled: true },
         scrollBeyondLastLine: false,
+        lineNumbers: 'on',
         renderLineHighlight: 'all',
+        fontFamily: "'DejaVu Sans Mono', 'Fira Code', 'Consolas', monospace"
       });
 
-      // Keyboard shortcut Ctrl+Enter or Cmd+Enter to execute
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
-        runTransformation();
+      // Keyboard Shortcut F5 / Ctrl+Enter
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'F5' || (e.ctrlKey && e.key === 'Enter')) {
+          e.preventDefault();
+          runTransformation();
+        }
       });
 
       // Load initial preset
-      loadPreset('ecommerce');
+      loadPresetData('ecommerce');
     });
 
-    function setEngine(engine) {
-      currentEngine = engine;
-      document.querySelectorAll('.engine-tab').forEach(tab => {
-        tab.className = 'engine-tab px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-slate-200 transition-all';
+    // Navigation View Switcher
+    function switchMainView(view) {
+      document.querySelectorAll('#nav-studio, #nav-connectors, #nav-fabric').forEach(btn => {
+        btn.className = 'px-3 py-1 text-slate-400 hover:text-slate-200 hover:bg-[#252526]';
       });
-      document.getElementById('tab-' + engine).className = 'engine-tab px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-medium transition-all';
+      document.getElementById('nav-' + view).className = 'px-3 py-1 bg-[#252526] text-white font-bold border-b-2 border-[#007acc]';
 
-      // Set editor language
+      if (view === 'connectors') {
+        switchSidebarTab('connectors-sidebar');
+      } else if (view === 'fabric') {
+        switchSidebarTab('fabric-sidebar');
+      } else {
+        switchSidebarTab('explorer');
+      }
+    }
+
+    // Sidebar Switcher
+    function switchSidebarTab(tab) {
+      ['explorer', 'connectors', 'fabric'].forEach(t => {
+        const btn = document.getElementById('act-btn-' + t);
+        if (btn) btn.className = 'w-10 h-10 flex items-center justify-center text-xs font-bold text-slate-400 hover:text-white hover:bg-[#252526]';
+      });
+
+      document.getElementById('view-sidebar-explorer').classList.add('hidden');
+      document.getElementById('view-sidebar-connectors').classList.add('hidden');
+      document.getElementById('view-sidebar-fabric').classList.add('hidden');
+
+      if (tab === 'connectors-sidebar') {
+        document.getElementById('act-btn-connectors').className = 'w-10 h-10 flex items-center justify-center text-xs font-bold bg-[#252526] text-white border-l-2 border-[#007acc]';
+        document.getElementById('view-sidebar-connectors').classList.remove('hidden');
+      } else if (tab === 'fabric-sidebar') {
+        document.getElementById('act-btn-fabric').className = 'w-10 h-10 flex items-center justify-center text-xs font-bold bg-[#252526] text-white border-l-2 border-[#007acc]';
+        document.getElementById('view-sidebar-fabric').classList.remove('hidden');
+      } else {
+        document.getElementById('act-btn-explorer').className = 'w-10 h-10 flex items-center justify-center text-xs font-bold bg-[#252526] text-white border-l-2 border-[#007acc]';
+        document.getElementById('view-sidebar-explorer').classList.remove('hidden');
+      }
+    }
+
+    // Engine Switcher
+    function switchEngine(eng) {
+      currentEngine = eng;
+      ['pyspark', 'ast_filter', 'sql', 'pandas'].forEach(e => {
+        const btn = document.getElementById('eng-' + e);
+        if (e === eng) {
+          btn.className = 'px-2 py-0.5 text-[11px] font-bold bg-[#007acc] text-white';
+        } else {
+          btn.className = 'px-2 py-0.5 text-[11px] font-bold text-slate-400 hover:text-white';
+        }
+      });
+
+      const langMap = { pyspark: 'python', ast_filter: 'python', sql: 'sql', pandas: 'python' };
+      const tabNames = { pyspark: 'transform.py', ast_filter: 'filter.expr', sql: 'query.sql', pandas: 'transform_pandas.py' };
+      
+      document.getElementById('activeEditorTab').innerHTML = `<span>${tabNames[eng]}</span><span class="text-slate-500 text-[10px]">x</span>`;
+      
       if (editor) {
-        const lang = engine === 'sql' ? 'sql' : 'python';
-        monaco.editor.setModelLanguage(editor.getModel(), lang);
-        editor.setValue(CODE_SNIPPETS[engine]);
-      }
-      document.getElementById('engineBadge').innerText = engine.toUpperCase() + ' Engine';
-    }
-
-    function applyTemplate() {
-      const select = document.getElementById('templateSelect');
-      const val = select.value;
-      if (val && TEMPLATES[val]) {
-        if (val.startsWith('pyspark')) setEngine('pyspark');
-        else if (val.startsWith('ast')) setEngine('ast_filter');
-        else if (val.startsWith('sql')) setEngine('sql');
-        else if (val.startsWith('pandas')) setEngine('pandas');
-        editor.setValue(TEMPLATES[val]);
+        monaco.editor.setModelLanguage(editor.getModel(), langMap[eng]);
+        editor.setValue(CODE_STARTERS[eng]);
       }
     }
 
-    async function loadPreset(presetName) {
+    // Bottom Tab Switcher
+    function switchBottomTab(tab) {
+      const btnPreview = document.getElementById('bottom-tab-preview');
+      const btnAnalytics = document.getElementById('bottom-tab-analytics');
+      const panelPreview = document.getElementById('panel-preview');
+      const panelAnalytics = document.getElementById('panel-analytics');
+
+      if (tab === 'preview') {
+        btnPreview.className = 'px-3 py-1 bg-[#1e1e1e] text-white font-bold border-b border-[#007acc]';
+        btnAnalytics.className = 'px-3 py-1 text-slate-400 hover:text-white';
+        panelPreview.classList.remove('hidden');
+        panelAnalytics.classList.add('hidden');
+      } else {
+        btnPreview.className = 'px-3 py-1 text-slate-400 hover:text-white';
+        btnAnalytics.className = 'px-3 py-1 bg-[#1e1e1e] text-white font-bold border-b border-[#007acc]';
+        panelPreview.classList.add('hidden');
+        panelAnalytics.classList.remove('hidden');
+        updateChartDropdowns();
+        renderChart();
+      }
+    }
+
+    // Load Ingestion Preset
+    async function selectPreset(name) {
+      loadPresetData(name);
+    }
+
+    async function loadPresetData(name) {
       try {
-        const res = await fetch('/api/v1/ingest/load-preset', {
+        const resp = await fetch('/api/v1/ingest/load-preset', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Org-Id': 'demo-tenant',
-            'X-Project-Id': 'elt-prod'
-          },
-          body: JSON.stringify({ preset: presetName })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ preset: name })
         });
-        const data = await res.json();
+        const data = await resp.json();
         currentDatasetKey = data.key;
-        document.getElementById('datasetKeyInput').value = data.key;
-        document.getElementById('ingestStats').innerText = `${data.columns.length} cols • ${data.row_count} rows`;
-        
-        // Render schema tags
-        const tagsContainer = document.getElementById('schemaTags');
-        tagsContainer.innerHTML = '';
-        data.columns.forEach(col => {
-          const span = document.createElement('span');
-          span.className = 'px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700';
-          span.innerText = col;
-          tagsContainer.appendChild(span);
-        });
+        currentColumns = data.columns;
+        document.getElementById('sidebarRowBadge').innerText = `${data.row_count} rows`;
 
-        // Run default transform on load
+        // Run default transformation to populate preview table
         runTransformation();
       } catch (err) {
-        console.error("Error loading preset:", err);
+        console.error("Failed to load preset:", err);
       }
     }
 
+    // File Upload Handler
+    async function handleWebUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const resp = await fetch('/api/v1/ingest/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, content: text })
+        });
+        const data = await resp.json();
+        currentDatasetKey = data.key;
+        currentColumns = data.columns;
+        document.getElementById('sidebarRowBadge').innerText = `${data.row_count} rows`;
+        runTransformation();
+      } catch (err) {
+        alert("Upload error: " + err);
+      }
+    }
+
+    // Execute Transformation
     async function runTransformation() {
       if (!editor) return;
       const code = editor.getValue();
-      const runBtn = document.getElementById('runBtn');
-      const statusBadge = document.getElementById('statusBadge');
-      const errorBox = document.getElementById('errorBox');
-      
-      runBtn.disabled = true;
-      runBtn.innerHTML = '<span>⏳</span> Running...';
-      statusBadge.className = 'px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800 font-mono text-[11px]';
-      statusBadge.innerText = 'Executing...';
-      errorBox.classList.add('hidden');
+      document.getElementById('topTelemetry').innerText = '[STATUS: EXECUTING...]';
 
       try {
-        const res = await fetch('/api/v1/transform/execute', {
+        const resp = await fetch('/api/v1/transform/execute', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Org-Id': 'demo-tenant',
-            'X-Project-Id': 'elt-prod'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             dataset_key: currentDatasetKey,
             engine: currentEngine,
@@ -386,126 +588,232 @@ df_out = df.withColumn("amount_with_vat", F.round(F.col("amount") * 1.20, 2))
             limit: 100
           })
         });
+        const out = await resp.json();
 
-        const result = await res.json();
-        runBtn.disabled = false;
-        runBtn.innerHTML = '<span>▶</span> Run (Ctrl+Enter)';
+        if (out.status === 'succeeded') {
+          currentDataRecords = out.records || [];
+          currentColumns = out.columns || [];
 
-        if (result.status === 'succeeded') {
-          statusBadge.className = 'px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono text-[11px]';
-          statusBadge.innerText = 'Succeeded';
-          document.getElementById('metricRows').innerText = `${result.row_count} rows`;
-          document.getElementById('metricDuration').innerText = `${result.duration_ms} ms`;
-          document.getElementById('engineBadge').innerText = result.engine_details || currentEngine.toUpperCase();
-          fullRecords = result.records;
-          renderTable(result.columns, result.records);
+          // FinOps Capacity Update
+          if (out.capacity_report) {
+            cumulativeCU += out.capacity_report.capacity_units;
+            cumulativeSavings += out.capacity_report.cost_avoidance_usd;
+            document.getElementById('sidebarFinopsTier').innerText = out.capacity_report.tier_used;
+            document.getElementById('sidebarFinopsCU').innerText = `${cumulativeCU.toFixed(4)} CU`;
+            document.getElementById('sidebarFinopsSavings').innerText = `$${cumulativeSavings.toFixed(4)}`;
+            document.getElementById('panelCUBadge').innerText = `CU: ${out.capacity_report.capacity_units}`;
+            document.getElementById('panelSavingsBadge').innerText = `SAVED: $${out.capacity_report.cost_avoidance_usd.toFixed(4)}`;
+            document.getElementById('headerTierBadge').innerText = `[${out.capacity_report.tier_used}]`;
+          }
+
+          if (out.audit_record) {
+            document.getElementById('sidebarAuditHash').innerText = out.audit_record.manifest_signature;
+          }
+
+          document.getElementById('panelRowsBadge').innerText = `ROWS: ${out.row_count}`;
+          document.getElementById('topTelemetry').innerText = `[SUCCEEDED: ${out.row_count} rows | ${out.duration_ms}ms]`;
+          document.getElementById('bottomStatusBarRight').innerHTML = `<span>[STATUS: SUCCEEDED]</span> | <span>Time: ${out.duration_ms}ms</span> | <span>CU: ${out.capacity_report ? out.capacity_report.capacity_units : '0.00'}</span>`;
+
+          populateTable(currentColumns, currentDataRecords);
+          updateChartDropdowns();
+          if (!document.getElementById('panel-analytics').classList.contains('hidden')) {
+            renderChart();
+          }
         } else {
-          statusBadge.className = 'px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 font-mono text-[11px]';
-          statusBadge.innerText = 'Failed';
-          document.getElementById('metricRows').innerText = '0 rows';
-          document.getElementById('metricDuration').innerText = `${result.duration_ms} ms`;
-          errorBox.innerText = `Error: ${result.error}`;
-          errorBox.classList.remove('hidden');
+          document.getElementById('topTelemetry').innerText = `[FAILED: ${out.error}]`;
+          document.getElementById('bottomStatusBarRight').innerHTML = `<span class="text-rose-300">[FAILED: ${out.error}]</span>`;
         }
       } catch (err) {
-        runBtn.disabled = false;
-        runBtn.innerHTML = '<span>▶</span> Run (Ctrl+Enter)';
-        statusBadge.className = 'px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 font-mono text-[11px]';
-        statusBadge.innerText = 'Network Error';
-        errorBox.innerText = `Network or request error: ${err.message}`;
-        errorBox.classList.remove('hidden');
+        document.getElementById('topTelemetry').innerText = `[ERROR: ${err.message}]`;
       }
     }
 
-    function renderTable(columns, records) {
-      const tableHead = document.getElementById('tableHead');
-      const tableBody = document.getElementById('tableBody');
-      const emptyState = document.getElementById('emptyState');
+    // Populate Table
+    function populateTable(columns, records) {
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
 
+      thead.innerHTML = `<tr>${columns.map(c => `<th class="p-2 border-r border-[#2b2b2b]">${c}</th>`).join('')}</tr>`;
+      
       if (!records || records.length === 0) {
-        tableHead.innerHTML = '';
-        tableBody.innerHTML = '';
-        emptyState.classList.remove('hidden');
-        emptyState.innerText = 'Transformation executed successfully, but returned 0 rows.';
+        tbody.innerHTML = `<tr><td colspan="${columns.length}" class="p-4 text-center text-slate-500">No records returned</td></tr>`;
         return;
       }
 
-      emptyState.classList.add('hidden');
-
-      // Build Headers
-      let headHtml = '<tr>';
-      columns.forEach(col => {
-        headHtml += `<th class="px-3 py-2 border-b border-slate-700 font-medium text-slate-300">${col}</th>`;
-      });
-      headHtml += '</tr>';
-      tableHead.innerHTML = headHtml;
-
-      // Build Rows
-      let bodyHtml = '';
-      records.forEach(row => {
-        bodyHtml += '<tr class="hover:bg-slate-800/40 transition-colors">';
-        columns.forEach(col => {
-          const val = row[col];
-          const displayVal = val !== null && val !== undefined ? val : '<span class="text-slate-600">null</span>';
-          bodyHtml += `<td class="px-3 py-1.5 border-b border-slate-800/60">${displayVal}</td>`;
-        });
-        bodyHtml += '</tr>';
-      });
-      tableBody.innerHTML = bodyHtml;
+      tbody.innerHTML = records.map(r => `
+        <tr class="hover:bg-[#252526]">
+          ${columns.map(c => `<td class="p-2 border-r border-[#2b2b2b]">${r[c] !== undefined ? r[c] : 'NULL'}</td>`).join('')}
+        </tr>
+      `).join('');
     }
 
-    function filterTable() {
-      const term = document.getElementById('tableFilter').value.toLowerCase();
-      if (!term) {
-        renderTable(Object.keys(fullRecords[0] || {}), fullRecords);
-        return;
+    // Update Chart Dropdowns
+    function updateChartDropdowns() {
+      const selX = document.getElementById('chartXAxis');
+      const selY = document.getElementById('chartYAxis');
+      const curX = selX.value;
+      const curY = selY.value;
+
+      selX.innerHTML = currentColumns.map(c => `<option value="${c}" ${c === curX ? 'selected' : ''}>${c}</option>`).join('');
+      selY.innerHTML = currentColumns.map(c => `<option value="${c}" ${c === curY ? 'selected' : ''}>${c}</option>`).join('');
+
+      if (!curX && currentColumns.length > 0) {
+        selX.value = currentColumns.find(c => ['country', 'category', 'status', 'device_id'].includes(c)) || currentColumns[0];
       }
-      const filtered = fullRecords.filter(r => 
-        Object.values(r).some(v => String(v).toLowerCase().includes(term))
-      );
-      renderTable(Object.keys(fullRecords[0] || {}), filtered);
+      if (!curY && currentColumns.length > 1) {
+        selY.value = currentColumns.find(c => ['amount', 'temperature', 'total_revenue', 'salary'].includes(c)) || currentColumns[1];
+      }
     }
 
-    function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        const text = e.target.result;
-        try {
-          const res = await fetch('/api/v1/ingest/upload', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Org-Id': 'demo-tenant',
-              'X-Project-Id': 'elt-prod'
+    // Render Chart.js Analytics
+    function renderChart() {
+      const ctx = document.getElementById('analyticsChartCanvas').getContext('2d');
+      const xCol = document.getElementById('chartXAxis').value;
+      const yCol = document.getElementById('chartYAxis').value;
+      const type = document.getElementById('chartType').value;
+      const agg = document.getElementById('chartAgg').value;
+
+      if (!currentDataRecords || currentDataRecords.length === 0) return;
+
+      // Extract values
+      let grouped = {};
+      let numericVals = [];
+
+      currentDataRecords.forEach(r => {
+        const xVal = String(r[xCol]);
+        const yVal = parseFloat(r[yCol]) || 0;
+        numericVals.push(yVal);
+
+        if (!grouped[xVal]) grouped[xVal] = [];
+        grouped[xVal].push(yVal);
+      });
+
+      // Aggregate
+      let labels = Object.keys(grouped).slice(0, 15);
+      let values = labels.map(lbl => {
+        const vals = grouped[lbl];
+        if (agg === 'COUNT') return vals.length;
+        if (agg === 'AVG') return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+        if (agg === 'MIN') return Math.min(...vals).toFixed(2);
+        if (agg === 'MAX') return Math.max(...vals).toFixed(2);
+        return vals.reduce((a, b) => a + b, 0).toFixed(2); // SUM
+      });
+
+      // Update Summary Strip
+      if (numericVals.length > 0) {
+        const sum = numericVals.reduce((a, b) => a + b, 0);
+        const mean = (sum / numericVals.length).toFixed(1);
+        const min = Math.min(...numericVals).toFixed(1);
+        const max = Math.max(...numericVals).toFixed(1);
+        document.getElementById('chartStatsStrip').innerHTML = `
+          <span>COUNT: ${numericVals.length}</span> |
+          <span>MEAN: ${mean}</span> |
+          <span>SUM: ${sum.toFixed(1)}</span> |
+          <span>MIN: ${min}</span> |
+          <span>MAX: ${max}</span>
+        `;
+      }
+
+      if (chartInstance) chartInstance.destroy();
+
+      const chartConfigType = type === 'histogram' ? 'bar' : type;
+
+      chartInstance = new Chart(ctx, {
+        type: chartConfigType,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: `${yCol} (${agg})`,
+            data: values,
+            backgroundColor: type === 'line' ? 'rgba(63, 185, 80, 0.15)' : 'rgba(0, 122, 204, 0.85)',
+            borderColor: type === 'line' ? '#3fb950' : '#58a6ff',
+            borderWidth: 2,
+            fill: type === 'line',
+            tension: 0.35,
+            pointBackgroundColor: '#ffffff',
+            pointBorderColor: '#3fb950',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#cccccc', font: { family: "'DejaVu Sans Mono', monospace" } } }
+          },
+          scales: {
+            x: {
+              grid: { color: '#2d2d2d' },
+              ticks: { color: '#cccccc', font: { family: "'DejaVu Sans Mono', monospace" } }
             },
-            body: JSON.stringify({
-              filename: file.name,
-              content: text
-            })
-          });
-          const data = await res.json();
-          currentDatasetKey = data.key;
-          document.getElementById('datasetKeyInput').value = data.key;
-          document.getElementById('ingestStats').innerText = `${data.columns.length} cols • ${data.row_count} rows`;
-          
-          const tagsContainer = document.getElementById('schemaTags');
-          tagsContainer.innerHTML = '';
-          data.columns.forEach(col => {
-            const span = document.createElement('span');
-            span.className = 'px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700';
-            span.innerText = col;
-            tagsContainer.appendChild(span);
-          });
-          runTransformation();
-        } catch (err) {
-          alert('Upload failed: ' + err.message);
+            y: {
+              grid: { color: '#2d2d2d' },
+              ticks: { color: '#cccccc', font: { family: "'DejaVu Sans Mono', monospace" } }
+            }
+          }
         }
-      };
-      reader.readAsText(file);
+      });
+    }
+
+    // Connector Test Handlers
+    async function quickTestSQL() {
+      document.getElementById('sqlTestStatus').innerText = '[TESTING SSL CONNECTION...]';
+      try {
+        const resp = await fetch('/api/v1/connectors/test-sql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ engine_type: 'sqlite', database: ':memory:' })
+        });
+        const d = await resp.json();
+        document.getElementById('sqlTestStatus').innerText = `[CONNECTED: ${d.engine.toUpperCase()}]`;
+      } catch (err) {
+        document.getElementById('sqlTestStatus').innerText = `[ERROR: ${err.message}]`;
+      }
+    }
+
+    async function quickTestS3() {
+      document.getElementById('s3TestStatus').innerText = '[TESTING IAM REACHABILITY...]';
+      try {
+        const resp = await fetch('/api/v1/connectors/test-s3', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bucket_name: 'openflow-lakehouse', region: 'us-east-1' })
+        });
+        const d = await resp.json();
+        document.getElementById('s3TestStatus').innerText = `[CONNECTED: ${d.bucket}]`;
+      } catch (err) {
+        document.getElementById('s3TestStatus').innerText = `[ERROR: ${err.message}]`;
+      }
+    }
+
+    // Medallion Actions
+    async function medallionRegisterBronze() {
+      await fetch('/api/v1/medallion/register-bronze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataset_key: currentDatasetKey })
+      });
+      alert("Registered raw dataset into Medallion BRONZE layer.");
+    }
+
+    async function medallionPromoteSilver() {
+      await fetch('/api/v1/medallion/promote-silver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataset_key: currentDatasetKey })
+      });
+      alert("Promoted dataset to Medallion SILVER layer with PII Masking applied.");
+    }
+
+    async function medallionPromoteGold() {
+      await fetch('/api/v1/medallion/promote-gold', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataset_key: currentDatasetKey })
+      });
+      alert("Promoted dataset to Medallion GOLD analytical aggregates layer.");
     }
   </script>
+
 </body>
 </html>
-
